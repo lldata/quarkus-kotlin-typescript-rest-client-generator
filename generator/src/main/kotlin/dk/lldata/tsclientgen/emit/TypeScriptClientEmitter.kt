@@ -272,7 +272,9 @@ class TypeScriptClientEmitter(
                 val type = types.typeOf(param.type)
                 // What omitting it means, where the resource says so. Optionality alone reads as
                 // "the server copes"; the literal says which answer the caller actually gets.
-                val tsDoc = param.defaultValue?.let { CodeBlock.of("Server default: `%L`.", it) } ?: CodeBlock.empty()
+                // The trailing newline is load-bearing: `emitTSDoc` writes `/**`, the block, then
+                // ` */`, so a block that does not end a line puts the closing marker on it.
+                val tsDoc = param.defaultValue?.let { CodeBlock.of("Server default: `%L`.\n", it) } ?: CodeBlock.empty()
                 if (param.optional) optionalMember(name, type, tsDoc) else member(name, type, tsDoc)
             },
         )

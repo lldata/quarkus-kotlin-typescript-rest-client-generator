@@ -130,10 +130,12 @@ function shelvesShelfBooksNode(path: string, config: ApiConfig) {
         q?: string;
         condition?: Condition;
         /**
-         * Server default: `TITLE`. */
+         * Server default: `TITLE`.
+         */
         sort?: SortField;
         /**
-         * Server default: `50`. */
+         * Server default: `50`.
+         */
         limit?: number;
       },
       options?: RequestOptions,
