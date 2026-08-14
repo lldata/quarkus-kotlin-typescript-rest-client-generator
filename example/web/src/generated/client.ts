@@ -2,7 +2,24 @@
 // the generator, and re-run `./gradlew :example:backend:generateApiClient`.
 import { ApiConfig, RequestOptions, apiRequest } from "./client-runtime.js";
 
-export type Instant = string;
+export interface WireScalar<Raw, T extends Raw> {
+  from: (raw: Raw) => T;
+}
+
+export interface CheckedScalar<Raw, T extends Raw> extends WireScalar<Raw, T> {
+  is: (raw: Raw) => raw is T;
+}
+
+export type Instant = string & { readonly __brand: "Instant" };
+
+export const Instant: CheckedScalar<string, Instant> = {
+  from: (raw: string): Instant => {
+    if (!Instant.is(raw)) throw new TypeError(`invalid Instant: ${raw}`);
+    return raw;
+  },
+  is: (raw: string): raw is Instant =>
+    /^(?:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))$/u.test(raw),
+};
 
 export type ShelfSlug = string;
 

@@ -11,17 +11,13 @@ has a rule for.
 
 Then <http://localhost:8088>. The data is in memory, so restarting resets it.
 
-The page assumes a reasonably modern browser. The floor is set by the shipped transport, which uses
-`AbortSignal.any` and `AbortSignal.timeout` to combine a caller's abort with a per-call timeout, and
-by the page's own `replaceChildren`; nothing here is polyfilled or transpiled, because the point of
-the example is that what runs is what was generated. Check anything you are unsure of on
-[caniuse](https://caniuse.com).
-
-Worth knowing before you reach for `Temporal` in a client of your own: it is not yet everywhere —
-[caniuse.com/temporal](https://caniuse.com/temporal) had it at 69% of global usage in July 2026,
-with the gap almost entirely older Safari and iOS, where every browser is WebKit and a user cannot
-route around it. That is why converting a date is a decision for the consuming project rather than
-something the generated client does for you.
+**The page needs a current browser, and says so if it does not have one.** Nothing here is
+polyfilled or transpiled — the point of the example is that what runs is what was generated — so it
+checks at startup and renders a plain message rather than a blank panel. The floor: `AbortSignal.any`
+and `AbortSignal.timeout` from the shipped transport, `replaceChildren` from the page, and
+**`Temporal`**, which [caniuse](https://caniuse.com/temporal) had at 69% of global usage in July
+2026. That last one is the reason the check exists: the gap is almost entirely older Safari and iOS,
+where every browser is WebKit and a user cannot install their way out of it.
 
 ## What to read, in order
 
@@ -57,10 +53,17 @@ and ambient parameters (a cookie, an injected `UriInfo`) that never reach the cl
 [OpsResource.kt](backend/src/main/kotlin/dk/lldata/tsclientgen/example/OpsResource.kt) carries no
 `@TypeScriptApi` and is therefore absent from the client — that is the opt-in working.
 
-**4. What came out** — [client.ts](web/src/generated/client.ts). Read it next to the Kotlin: every
+**4. What came out** — [client.ts](web/src/generated/client.ts) and
+[client-temporal.ts](web/src/generated/client-temporal.ts). Read it next to the Kotlin: every
 declaration in it is an answer to one in step 1, and the call tree at the bottom is the paths from
 step 3. [client-runtime.ts](web/src/generated/client-runtime.ts) is the transport, written by the
 generator and replaceable.
+
+The example uses `ScalarStyle.ValueObject`, so `Instant` is branded — `addedAt` cannot be assigned a
+title — and comes with a companion to construct one through. The conversion module is separate
+because naming `Temporal.Instant` in `client.ts` would force `lib: "esnext"` on everything that
+imports the client. The brand costs the page nothing: it only ever reads timestamps, and `Isbn` is a
+Kotlin value class rather than a scalar, so it is a plain alias either way.
 
 **5. What it is like to use** — [app.ts](web/src/app.ts). No URL is spelled in it, no response is
 cast, and the sealed response narrows in a `switch` that stops compiling if Kotlin gains a variant.
@@ -132,6 +135,10 @@ way to see what a resource is failing to declare.
 query parameters with `valueOf`. `Condition` therefore carries a static `fromString`, without which
 `?condition=worn` — what the generated client sends — is a 404 while `?condition=WORN` works. The
 `ENUM_QUERY_PARAM_CONVERTIBLE` lint rule exists because of this example.
+
+**Node's `Temporal` is an older draft.** `node --harmony-temporal` has one, but not the current API
+— `Temporal.Now.timeZoneId()` is missing there while Chromium 148 has it. If you convert dates in a
+server-rendered path, check the shape of the API you get and not just that `Temporal` is defined.
 
 **Value classes and dev-mode hot reload.** Editing a file with `quarkusDev` running can leave
 jackson-module-kotlin holding a value class from the previous classloader, which surfaces as a

@@ -26,6 +26,12 @@ class GeneratedClientDriftTest {
         ExampleClient.runtimeFile.readText() shouldBe ClientGenerator.runtimeSource()
     }
 
+    /** Generated from the same model, so it drifts the same way and needs the same gate. */
+    @Test
+    fun `the committed Temporal module matches the client it converts`() {
+        ExampleClient.temporalFile.readText() shouldBe generator.temporalSource(clientImport = "./client.js")
+    }
+
     @Test
     fun `the API keeps the contract the client is generated from`() {
         generator.lint().check()

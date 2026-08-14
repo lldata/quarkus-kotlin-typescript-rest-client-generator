@@ -187,6 +187,27 @@ is unknown, `from` brands without checking and says so rather than pretending.
 `Named` stays the default because branding changes call sites, and an upgrade should not silently
 stop a project's request bodies compiling.
 
+### Converting to `Temporal`
+
+`writeTemporalTo(file)` emits a second module for the date scalars, and returns null when nothing on
+the surface converts — no file rather than an empty one:
+
+```ts
+import { toTemporal, fromTemporal } from "./generated/client-temporal.js";
+
+toTemporal.instant(book.addedAt);      // Temporal.Instant
+fromTemporal.instant(someInstant);     // back to the wire type, validated if branded
+```
+
+It is cheap because ISO-8601 is what both sides already speak: the string the server writes is the
+format `Temporal` parses, so there is no conversion layer and nothing runs per response.
+
+Separate from the client for a reason that survives full browser support — naming `Temporal.Instant`
+in `client.ts` would force `lib: "esnext"` on every project that imports the client, and importing
+this module is how a project says it has decided. As of July 2026 that decision is real:
+[caniuse](https://caniuse.com/temporal) put `Temporal` at 69% of global usage, and Node 24 needs
+`--harmony-temporal` (where the API is an older draft than the browsers').
+
 ## The transport
 
 `writeRuntimeTo` drops a dependency-free `client-runtime.ts` next to the client: `fetch`, a query

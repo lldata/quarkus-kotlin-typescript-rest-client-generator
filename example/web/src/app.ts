@@ -7,12 +7,14 @@
 import {
   api,
   type Book,
+  type Instant,
   type BookListResponse,
   type Condition,
   type Shelf,
   type SortField,
 } from "./generated/client.js";
 import { ApiError } from "./generated/client-runtime.js";
+import { toTemporal } from "./generated/client-temporal.js";
 
 type State = {
   shelves: Shelf[];
@@ -234,7 +236,7 @@ function bookRow(book: Book): HTMLElement {
       <div class="meta">
         <span class="pill ${book.condition}">${book.condition}</span>
         ${book.tags.map((tag) => `<span class="pill tag">${escape(tag)}</span>`).join("")}
-        <span class="muted">added ${date(book.addedAt)}</span>
+        <span class="muted" title="added ${date(book.addedAt)}">added ${age(book.addedAt)}</span>
         ${book.borrowedBy != null ? `<span class="pill out">out with ${escape(book.borrowedBy)}</span>` : ""}
       </div>
     </div>
@@ -259,9 +261,27 @@ function action(label: string, run: () => Promise<void>, kind = ""): HTMLButtonE
   return button;
 }
 
-/** `Instant` reaches the client as an ISO-8601 string, which is what Jackson writes. */
-function date(iso: string): string {
+/**
+ * `Instant` reaches the client as an ISO-8601 string — branded, so it cannot be confused with a
+ * title, and still a string, so `new Date` takes it unchanged.
+ */
+function date(iso: Instant): string {
   return new Date(iso).toLocaleDateString();
+}
+
+/**
+ * The same value through `Temporal`, which is what the generated conversion module is for. The
+ * wire format the server writes is the interchange format `Temporal` parses, so this is one call
+ * and no conversion layer.
+ */
+function age(addedAt: Instant): string {
+  // An Instant has no calendar, so "days" is not a unit it can answer in — the same reason
+  // java.time makes you pick a zone. Through the zone to a plain date, and the difference is
+  // calendar days, which is what "3 days ago" means.
+  const added = toTemporal.instant(addedAt).toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainDate();
+  const days = added.until(Temporal.Now.plainDateISO(), { largestUnit: "day" }).days;
+  if (days === 0) return "today";
+  return days === 1 ? "1 day ago" : `${days} days ago`;
 }
 
 function escape(text: string): string {
@@ -275,8 +295,8 @@ function escape(text: string): string {
  * generated — so a browser missing something the page needs would otherwise show a blank panel and
  * an error in a console nobody has open. Say so instead.
  *
- * These are what the page actually uses. `Temporal` is deliberately not among them: converting a
- * date is a consuming project's decision, and this page does not make it.
+ * These are what the page actually uses — including `Temporal`, which this page does depend on
+ * because it converts timestamps through the generated conversion module.
  */
 function missingCapabilities(): string[] {
   const missing: string[] = [];
@@ -284,6 +304,9 @@ function missingCapabilities(): string[] {
   if (!signals || typeof AbortSignal.any !== "function") missing.push("AbortSignal.any");
   if (!signals || typeof AbortSignal.timeout !== "function") missing.push("AbortSignal.timeout");
   if (typeof Element.prototype.replaceChildren !== "function") missing.push("replaceChildren");
+  // The page converts timestamps with the generated Temporal module, so here it really is required
+  // — https://caniuse.com/temporal had it at 69% of global usage in July 2026.
+  if (typeof Temporal === "undefined") missing.push("Temporal");
   return missing;
 }
 
@@ -291,8 +314,9 @@ const missing = missingCapabilities();
 if (missing.length > 0) {
   const warning = document.createElement("section");
   warning.innerHTML =
-    `<h2>This browser is missing something</h2><p>The page needs <code>${missing.join("</code>, <code>")}</code>` +
-    ` and this browser has neither a polyfill nor them. See <a href="https://caniuse.com">caniuse</a>.</p>`;
+    `<h2>This browser is missing something</h2><p>The page needs <code>${missing.join("</code>, <code>")}</code>,` +
+    ` and nothing here is polyfilled — the point of the example is that what runs is what was` +
+    ` generated. See <a href="https://caniuse.com">caniuse</a>.</p>`;
   document.querySelector("main")?.prepend(warning);
 } else {
   for (const control of [search, conditionFilter, sortField, limitField]) {

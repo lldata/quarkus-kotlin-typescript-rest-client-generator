@@ -1,10 +1,13 @@
 package dk.lldata.tsclientgen
 
+import dk.lldata.tsclientgen.emit.TemporalModuleEmitter
 import dk.lldata.tsclientgen.emit.TypeScriptClientEmitter
+import dk.lldata.tsclientgen.emit.TypeScriptTypes
 import dk.lldata.tsclientgen.format.SourceFormatter
 import dk.lldata.tsclientgen.lint.ApiContractLint
 import dk.lldata.tsclientgen.model.ApiModel
 import dk.lldata.tsclientgen.model.ApiModelReader
+import dk.lldata.tsclientgen.model.ParamSource
 import java.io.File
 
 /**
@@ -69,6 +72,44 @@ class ClientGenerator(
         target.writeText(runtimeSource())
         return target
     }
+
+    /**
+     * Writes the `Temporal` conversion module next to the client, and returns the file — or null
+     * when nothing on the client surface converts to a `Temporal` type, in which case there is no
+     * file rather than an empty one.
+     *
+     * Separate from the client on purpose: naming `Temporal.Instant` in `client.ts` would force
+     * `lib: "esnext"` on everything that imports it, and `Temporal` is not yet everywhere
+     * (https://caniuse.com/temporal). Importing this module is how a project says it has decided.
+     *
+     * @param clientImport how this module should import the client, spelled as the statement reads.
+     */
+    fun writeTemporalTo(
+        target: File,
+        clientImport: String = "./client",
+    ): File? {
+        val source = temporalSource(clientImport) ?: return null
+        target.parentFile?.mkdirs()
+        target.writeText(source)
+        return target
+    }
+
+    /** The `Temporal` module as it should be on disk, or null when there is nothing to convert. */
+    fun temporalSource(clientImport: String = "./client"): String? {
+        val scalars = TypeScriptTypes(options).reachable(coveredTypes()).namedScalars
+        return TemporalModuleEmitter(options).emit(scalars, clientImport)?.let(formatter::format)
+    }
+
+    /**
+     * Everything the client's types are built from — the same roots the emitter walks, so the
+     * conversion module can only mention scalars the client actually has.
+     */
+    private fun coveredTypes() =
+        model.clientSurface.let { covered ->
+            covered.map { it.responseType }.filterNot { ApiModelReader.isBodyless(it) } +
+                covered.mapNotNull { it.body?.type } +
+                covered.flatMap { it.params }.filter { it.source == ParamSource.PATH || it.source == ParamSource.QUERY }.map { it.type }
+        }
 
     /**
      * The first line where [target] and a fresh render disagree, or null when they agree.

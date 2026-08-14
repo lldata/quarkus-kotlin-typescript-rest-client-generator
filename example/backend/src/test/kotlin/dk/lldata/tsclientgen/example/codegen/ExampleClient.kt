@@ -2,6 +2,7 @@ package dk.lldata.tsclientgen.example.codegen
 
 import dk.lldata.tsclientgen.ClientGenerator
 import dk.lldata.tsclientgen.GeneratorOptions
+import dk.lldata.tsclientgen.ScalarStyle
 import java.io.File
 
 /**
@@ -15,6 +16,11 @@ object ExampleClient {
     private val options =
         GeneratorOptions(
             dtoPackages = listOf("dk.lldata.tsclientgen.example"),
+            // The example opts into the strongest of the three: `Instant` is branded, and the page
+            // converts it with the emitted Temporal module. The brand costs nothing here — the page
+            // only ever reads timestamps — and `Isbn` is a Kotlin value class rather than a scalar,
+            // so it is unaffected either way.
+            scalars = GeneratorOptions.scalars(ScalarStyle.ValueObject),
             // `.js` on purpose: the browser loads the compiled output as ES modules, where the
             // extension is required. TypeScript resolves `./client-runtime.js` to the `.ts` next to
             // it, so both the type check and the browser are happy.
@@ -31,6 +37,7 @@ object ExampleClient {
 
     val clientFile: File = File(generatedDir, "client.ts")
     val runtimeFile: File = File(generatedDir, "client-runtime.ts")
+    val temporalFile: File = File(generatedDir, "client-temporal.ts")
 
     /**
      * The compiled resources the model is read from.

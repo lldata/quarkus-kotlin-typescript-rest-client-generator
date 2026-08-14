@@ -172,7 +172,7 @@ data class GeneratorOptions(
                 known.qualifiedName to
                     when {
                         alias == null || style == ScalarStyle.Inline -> Scalar.inline(known.spelling)
-                        style == ScalarStyle.Named -> Scalar.named(alias, known.spelling)
+                        style == ScalarStyle.Named -> Scalar.named(alias, known.spelling, known.temporal)
                         else -> Scalar.branded(alias, known.spelling, known.pattern, known.temporal)
                     }
             }

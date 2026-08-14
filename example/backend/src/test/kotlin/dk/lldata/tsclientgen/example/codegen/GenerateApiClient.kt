@@ -10,5 +10,6 @@ fun main() {
     val generator = ExampleClient.generator()
     generator.writeRuntimeTo(ExampleClient.runtimeFile)
     generator.writeTo(ExampleClient.clientFile)
-    println("Wrote ${ExampleClient.clientFile.name} and ${ExampleClient.runtimeFile.name} to ${ExampleClient.clientFile.parent}")
+    generator.writeTemporalTo(ExampleClient.temporalFile, clientImport = "./client.js")
+    println("Wrote ${ExampleClient.clientFile.parentFile.list()?.sorted()?.joinToString(", ")} to ${ExampleClient.clientFile.parent}")
 }

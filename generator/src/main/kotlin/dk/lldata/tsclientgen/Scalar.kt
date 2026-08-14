@@ -16,6 +16,19 @@ sealed interface Scalar {
     /** The right-hand side of the alias to declare, or null when there is nothing to declare. */
     val declaration: String?
 
+    /**
+     * The `Temporal` type this converts to, where one exists.
+     *
+     * Carried by any named form, because converting a timestamp does not depend on branding it —
+     * a project can want `Temporal.Instant.from(book.addedAt)` without wanting the brand. Nothing
+     * in the client refers to this; it is what
+     * [dk.lldata.tsclientgen.ClientGenerator.writeTemporalTo] emits a separate module from, and
+     * separate on purpose: `Temporal` was 69% of global browser usage in July 2026
+     * (https://caniuse.com/temporal) and Node 24 needs `--harmony-temporal`, so depending on it is
+     * a consuming project's decision rather than one every importer of the client inherits.
+     */
+    val temporal: String? get() = null
+
     /** Written at every use site: `addedAt: string`. Right for `String`, `Int`, `Boolean`. */
     data class Inline(
         override val spelling: String,
@@ -35,6 +48,7 @@ sealed interface Scalar {
     data class Named(
         val name: String,
         override val spelling: String,
+        override val temporal: String? = null,
     ) : Scalar {
         override val reference get() = name
         override val declaration get() = spelling
@@ -49,18 +63,12 @@ sealed interface Scalar {
      *   `Matcher.matches()`, which must match the whole input, while a JavaScript `test()` searches
      *   for a substring. An unanchored port of `\d{3}` accepts `"abc123xyz"` in the client and is
      *   rejected by the server.
-     * @param temporal the `Temporal` type this converts to, where one exists. Recorded here so a
-     *   conversion module can be emitted from it; nothing in the client itself refers to it, and
-     *   deliberately so — `Temporal` was 69% of global browser usage in July 2026
-     *   (https://caniuse.com/temporal), the gap being older Safari and iOS, and Node 24 does not
-     *   have it without `--harmony-temporal`. Whether to depend on it is a consuming project's
-     *   call, so it belongs in a module they opt into rather than in the client everyone imports.
      */
     data class Branded(
         val name: String,
         override val spelling: String,
         val pattern: String? = null,
-        val temporal: String? = null,
+        override val temporal: String? = null,
     ) : Scalar {
         override val reference get() = name
         override val declaration get() = """$spelling & { readonly __brand: "$name" }"""
@@ -71,10 +79,12 @@ sealed interface Scalar {
         fun inline(spelling: String): Scalar = Inline(spelling)
 
         @JvmStatic
+        @JvmOverloads
         fun named(
             name: String,
             spelling: String,
-        ): Scalar = Named(name, spelling)
+            temporal: String? = null,
+        ): Scalar = Named(name, spelling, temporal)
 
         @JvmStatic
         @JvmOverloads
