@@ -1,6 +1,7 @@
 package dk.lldata.tsclientgen.emit
 
 import dk.lldata.tsclientgen.GeneratorOptions
+import dk.lldata.tsclientgen.Scalar
 import dk.lldata.tsclientgen.model.ApiModelReader
 import dk.lldata.tsclientgen.model.Endpoint
 import dk.lldata.tsclientgen.model.Param
@@ -15,6 +16,7 @@ import dk.lldata.typescriptpoet.dsl.arrow
 import dk.lldata.typescriptpoet.dsl.body
 import dk.lldata.typescriptpoet.dsl.call
 import dk.lldata.typescriptpoet.dsl.expression
+import dk.lldata.typescriptpoet.dsl.extends
 import dk.lldata.typescriptpoet.dsl.file
 import dk.lldata.typescriptpoet.dsl.function
 import dk.lldata.typescriptpoet.dsl.getter
@@ -29,6 +31,7 @@ import dk.lldata.typescriptpoet.dsl.returns
 import dk.lldata.typescriptpoet.dsl.shorthand
 import dk.lldata.typescriptpoet.dsl.type
 import dk.lldata.typescriptpoet.dsl.typeArgument
+import dk.lldata.typescriptpoet.dsl.typeParam
 import kotlin.reflect.KClass
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
@@ -84,8 +87,10 @@ class TypeScriptClientEmitter(
             file("client") {
                 addComment(options.header)
                 // First, because everything below may refer to one and nothing here refers back.
+                companionInterfaces(reachable.namedScalars.filterIsInstance<Scalar.Branded>())
                 for (scalar in reachable.namedScalars) {
                     type(scalar.reference, TypeName.implicit(scalar.declaration!!), Modifier.EXPORT)
+                    if (scalar is Scalar.Branded) scalarCompanion(scalar)
                 }
                 for (dto in dtos) {
                     when {
@@ -113,6 +118,84 @@ class TypeScriptClientEmitter(
         val rendered = StringBuilder()
         spec.writeTo(rendered)
         return rendered.toString()
+    }
+
+    /**
+     * The two shapes a companion can have, declared once so each `const` below can be annotated in
+     * a few characters. Poet requires a type on a `const`, and spelling the object type inline
+     * would put the longest line in the file next to the shortest value in it.
+     */
+    private fun FileSpec.Builder.companionInterfaces(branded: List<Scalar.Branded>) {
+        if (branded.isEmpty()) return
+        interfaze("WireScalar", Modifier.EXPORT) {
+            typeParam("Raw")
+            typeParam("T", TypeName.bound(TypeName.implicit("Raw")))
+            property("from", TypeName.implicit("(raw: Raw) => T"))
+        }
+        if (branded.any { it.pattern != null }) {
+            interfaze("CheckedScalar", Modifier.EXPORT) {
+                typeParam("Raw")
+                typeParam("T", TypeName.bound(TypeName.implicit("Raw")))
+                extends(TypeName.implicit("WireScalar<Raw, T>"))
+                property("is", TypeName.implicit("(raw: Raw) => raw is T"))
+            }
+        }
+    }
+
+    /**
+     * `export const Instant = { from, is }` — the companion a branded scalar is constructed through.
+     *
+     * A type and a value may share a name in TypeScript, which is as close as the language gets to a
+     * Kotlin companion object, and it reads like the library it mirrors: `Instant.from(raw)` beside
+     * `Temporal.Instant.from(raw)`.
+     *
+     * `from` is the cast a caller would otherwise write by hand, with the check they would forget.
+     * Where the format is unknown it still brands, and says so rather than pretending to validate.
+     */
+    private fun FileSpec.Builder.scalarCompanion(scalar: Scalar.Branded) {
+        val name = scalar.name
+        val raw = scalar.spelling
+        val pattern = scalar.pattern
+        val companion = if (pattern == null) "WireScalar<$raw, $name>" else "CheckedScalar<$raw, $name>"
+
+        property(name, TypeName.implicit(companion), Modifier.EXPORT, Modifier.CONST) {
+            initializer(
+                "%L",
+                obj {
+                    property(
+                        "from",
+                        arrow("from") {
+                            parameter("raw", TypeName.implicit(raw))
+                            returns(TypeName.implicit(name))
+                            if (pattern == null) {
+                                expression("raw as %L", name)
+                            } else {
+                                // Through its own guard, so the pattern is written once and `from`
+                                // needs no cast: past the check, TypeScript has narrowed `raw` to
+                                // the brand. Legal to reference here because the const is annotated.
+                                body {
+                                    statement("if (!%L.is(raw)) throw new TypeError(`invalid %L: \${raw}`)", name, name)
+                                    statement("return raw")
+                                }
+                            }
+                        },
+                    )
+                    // Only where there is something to test. A guard that always returned true
+                    // would read as a check and be none.
+                    if (pattern != null) {
+                        val regex = "/^(?:${pattern.replace("/", "\\/")})$/u"
+                        property(
+                            "is",
+                            arrow("is") {
+                                parameter("raw", TypeName.implicit(raw))
+                                returns(TypeName.implicit("raw is $name"))
+                                expression("%L.test(raw)", regex)
+                            },
+                        )
+                    }
+                },
+            )
+        }
     }
 
     private fun variantNames(dto: KClass<*>): Array<TypeName> =

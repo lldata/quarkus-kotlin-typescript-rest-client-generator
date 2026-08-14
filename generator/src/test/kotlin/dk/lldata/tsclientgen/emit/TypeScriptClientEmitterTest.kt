@@ -1,5 +1,6 @@
 package dk.lldata.tsclientgen.emit
 
+import dk.lldata.tsclientgen.GeneratorOptions
 import dk.lldata.tsclientgen.Scalar
 import dk.lldata.tsclientgen.fixture.ApiKeyedResource
 import dk.lldata.tsclientgen.fixture.LocaleResource
@@ -105,6 +106,43 @@ class TypeScriptClientEmitterTest {
 
         emitted shouldContain "Server default: `20`."
         emitted shouldContain "limit?: number;"
+    }
+
+    /**
+     * `ScalarStyle.ValueObject`: the alias becomes a brand, and the companion is how one is made.
+     * A type and a value may share a name in TypeScript, which is the closest the language gets to
+     * a Kotlin companion object.
+     */
+    @Test
+    fun `emits a branded scalar with a companion to construct it through`() {
+        val emitted = TypeScriptClientEmitter(testOptions.copy(scalars = GeneratorOptions.VALUE_OBJECT_SCALARS)).emit(model.clientSurface)
+
+        emitted shouldContain """export type Instant = string & { readonly __brand: "Instant" };"""
+        emitted shouldContain "export const Instant"
+        emitted shouldContain "from: (raw: string): Instant =>"
+        // Anchored, because Bean Validation matches the whole input and `test` does not.
+        emitted shouldContain "/^(?:"
+        emitted shouldContain ")$/u.test(raw)"
+        emitted shouldContain "is: (raw: string): raw is Instant =>"
+    }
+
+    /** No pattern, no guard: one that always returned true would read as a check and be none. */
+    @Test
+    fun `brands without validating where the format is unknown`() {
+        val told =
+            testOptions.copy(scalars = testOptions.scalars + ("java.time.Instant" to Scalar.branded("Instant", "string")))
+
+        val emitted = TypeScriptClientEmitter(told).emit(model.clientSurface)
+
+        emitted shouldContain "from: (raw: string): Instant => raw as Instant"
+        emitted shouldNotContain "raw is Instant"
+    }
+
+    /** The default is unchanged: a plain alias, so no call site has to construct anything. */
+    @Test
+    fun `names without branding by default`() {
+        whole shouldContain "export type Instant = string;"
+        whole shouldNotContain "__brand"
     }
 
     /** Jackson writes the scalar, so the client compares against a string, not an object. */

@@ -91,64 +91,104 @@ data class GeneratorOptions(
                 "java.util.concurrent.CompletableFuture",
             )
 
+        // Unanchored bodies: the emitter wraps each as `^(?:...)$`. See Scalar.Branded.pattern for
+        // why that anchoring is load-bearing rather than tidy.
+        private const val UUID_PATTERN = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+        private const val DATE_PATTERN = """\d{4}-\d{2}-\d{2}"""
+        private const val TIME_PATTERN = """\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?"""
+        private const val DATE_TIME_PATTERN = DATE_PATTERN + "T" + TIME_PATTERN
+        private const val INSTANT_PATTERN = DATE_TIME_PATTERN + """(?:Z|[+-]\d{2}:\d{2})"""
+        private const val ZONED_PATTERN = INSTANT_PATTERN + """(?:\[[^\]]+\])?"""
+        private const val DURATION_PATTERN = """-?P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?"""
+
         /**
-         * The primitives are inline, because `string` is the whole truth about a `String`.
+         * One entry per type the generator knows is a scalar on the wire, with everything the
+         * three [ScalarStyle]s need projected out of it.
          *
-         * The rest are named: a timestamp, an identifier and a duration are all "a string" only in
-         * the sense that everything is. Naming them costs nothing — they stay structurally
-         * assignable to `string` — and it is the only thing standing between a client that says
-         * `addedAt: Instant` and one that says `addedAt: string`, which is the same information a
-         * `format: date-time` in an OpenAPI document carries.
+         * @param alias null for the primitives: `string` is the whole truth about a `String`, and
+         *   there is no identity to keep. Everything else has a name worth keeping.
          */
-        val DEFAULT_SCALARS: Map<String, Scalar> =
-            mapOf(
-                "kotlin.String" to Scalar.inline("string"),
-                "kotlin.Char" to Scalar.inline("string"),
-                "kotlin.Int" to Scalar.inline("number"),
-                "kotlin.Long" to Scalar.inline("number"),
-                "kotlin.Short" to Scalar.inline("number"),
-                "kotlin.Byte" to Scalar.inline("number"),
-                "kotlin.Double" to Scalar.inline("number"),
-                "kotlin.Float" to Scalar.inline("number"),
-                "kotlin.Boolean" to Scalar.inline("boolean"),
+        private data class KnownScalar(
+            val qualifiedName: String,
+            val alias: String?,
+            val spelling: String,
+            val pattern: String? = null,
+            val temporal: String? = null,
+        )
+
+        /**
+         * The patterns are ISO-8601 as Jackson writes it with `write-dates-as-timestamps` off, and
+         * they are deliberately loose about seconds and fractions — a validating constructor is
+         * there to catch a title pasted into a date field, not to re-implement a date parser.
+         */
+        private val KNOWN_SCALARS =
+            listOf(
+                KnownScalar("kotlin.String", null, "string"),
+                KnownScalar("kotlin.Char", null, "string"),
+                KnownScalar("kotlin.Int", null, "number"),
+                KnownScalar("kotlin.Long", null, "number"),
+                KnownScalar("kotlin.Short", null, "number"),
+                KnownScalar("kotlin.Byte", null, "number"),
+                KnownScalar("kotlin.Double", null, "number"),
+                KnownScalar("kotlin.Float", null, "number"),
+                KnownScalar("kotlin.Boolean", null, "boolean"),
                 // A JSON number, and the precision a BigDecimal exists for is already gone by the
                 // time it is one. Named, so a reader can see where that happened.
-                "java.math.BigDecimal" to Scalar.named("BigDecimal", "number"),
-                "java.util.UUID" to Scalar.named("UUID", "string"),
-                "java.net.URI" to Scalar.named("URI", "string"),
-                "java.time.Instant" to Scalar.named("Instant", "string"),
-                "java.time.LocalDate" to Scalar.named("LocalDate", "string"),
-                "java.time.LocalTime" to Scalar.named("LocalTime", "string"),
-                "java.time.LocalDateTime" to Scalar.named("LocalDateTime", "string"),
-                "java.time.OffsetDateTime" to Scalar.named("OffsetDateTime", "string"),
-                "java.time.ZonedDateTime" to Scalar.named("ZonedDateTime", "string"),
-                "java.time.Duration" to Scalar.named("Duration", "string"),
-                // kotlinx-datetime, whose serializers write ISO-8601 by default — the same strings
-                // the `java.time` equivalents produce, so the same aliases. `kotlin.time.Instant`
-                // is where `kotlinx.datetime.Instant` moved, and both spell one alias.
-                "kotlinx.datetime.Instant" to Scalar.named("Instant", "string"),
-                "kotlin.time.Instant" to Scalar.named("Instant", "string"),
-                "kotlinx.datetime.LocalDate" to Scalar.named("LocalDate", "string"),
-                "kotlinx.datetime.LocalTime" to Scalar.named("LocalTime", "string"),
-                "kotlinx.datetime.LocalDateTime" to Scalar.named("LocalDateTime", "string"),
+                KnownScalar("java.math.BigDecimal", "BigDecimal", "number"),
+                KnownScalar("java.util.UUID", "UUID", "string", pattern = UUID_PATTERN),
+                // No pattern: a URI is close enough to "any string" that checking one would refuse
+                // things the server accepts.
+                KnownScalar("java.net.URI", "URI", "string"),
+                KnownScalar("java.time.Instant", "Instant", "string", INSTANT_PATTERN, "Temporal.Instant"),
+                KnownScalar("java.time.LocalDate", "LocalDate", "string", DATE_PATTERN, "Temporal.PlainDate"),
+                KnownScalar("java.time.LocalTime", "LocalTime", "string", TIME_PATTERN, "Temporal.PlainTime"),
+                KnownScalar("java.time.LocalDateTime", "LocalDateTime", "string", DATE_TIME_PATTERN, "Temporal.PlainDateTime"),
+                // No Temporal equivalent carries a bare offset; ZonedDateTime is the closest and is
+                // not the same thing, so this one converts to nothing rather than to something near.
+                KnownScalar("java.time.OffsetDateTime", "OffsetDateTime", "string", INSTANT_PATTERN),
+                KnownScalar("java.time.ZonedDateTime", "ZonedDateTime", "string", ZONED_PATTERN, "Temporal.ZonedDateTime"),
+                KnownScalar("java.time.Duration", "Duration", "string", DURATION_PATTERN, "Temporal.Duration"),
+                // kotlinx-datetime, whose serializers write the same ISO-8601, so the same aliases.
+                // `kotlin.time.Instant` is where `kotlinx.datetime.Instant` moved, and both spell one.
+                KnownScalar("kotlinx.datetime.Instant", "Instant", "string", INSTANT_PATTERN, "Temporal.Instant"),
+                KnownScalar("kotlin.time.Instant", "Instant", "string", INSTANT_PATTERN, "Temporal.Instant"),
+                KnownScalar("kotlinx.datetime.LocalDate", "LocalDate", "string", DATE_PATTERN, "Temporal.PlainDate"),
+                KnownScalar("kotlinx.datetime.LocalTime", "LocalTime", "string", TIME_PATTERN, "Temporal.PlainTime"),
+                KnownScalar("kotlinx.datetime.LocalDateTime", "LocalDateTime", "string", DATE_TIME_PATTERN, "Temporal.PlainDateTime"),
                 // Deliberately absent: `kotlin.time.Duration`. kotlinx-serialization writes it
                 // ISO-8601, Jackson sees a value class and writes a number, and the generator
-                // cannot tell which is serialising. An unmapped type now refuses loudly, which is
-                // the right outcome for a type whose wire form depends on the serializer.
+                // cannot tell which is serialising. An unmapped type refuses loudly, which is the
+                // right outcome for a type whose wire form depends on that.
             )
 
         /**
-         * Every scalar inlined, so a timestamp is spelled `string` at each use site and nothing is
-         * declared for it.
-         *
-         * The other defensible position, and one line to adopt:
-         * `GeneratorOptions(dtoPackages = …, scalars = GeneratorOptions.INLINE_SCALARS)`. It reads
-         * as less noise and less to learn; the cost is that the client can no longer tell a
-         * timestamp from a title, which is exactly what an OpenAPI `format: date-time` is for.
-         *
-         * Neither is wrong. Mix them per type if the whole-set answer fits badly —
-         * `DEFAULT_SCALARS + ("java.time.Duration" to Scalar.inline("string"))`.
+         * The known scalars, spelled according to [style]. Add to it or override entries in it —
+         * it is an ordinary map.
          */
-        val INLINE_SCALARS: Map<String, Scalar> = DEFAULT_SCALARS.mapValues { (_, scalar) -> Scalar.inline(scalar.spelling) }
+        @JvmStatic
+        fun scalars(style: ScalarStyle): Map<String, Scalar> =
+            KNOWN_SCALARS.associate { known ->
+                val alias = known.alias
+                known.qualifiedName to
+                    when {
+                        alias == null || style == ScalarStyle.Inline -> Scalar.inline(known.spelling)
+                        style == ScalarStyle.Named -> Scalar.named(alias, known.spelling)
+                        else -> Scalar.branded(alias, known.spelling, known.pattern, known.temporal)
+                    }
+            }
+
+        /**
+         * [ScalarStyle.Named]: a name, no enforcement, no call site changed.
+         *
+         * The default because it is the only one of the three that costs a consumer nothing to
+         * adopt. [ScalarStyle.ValueObject] is better and is one line away; it is not a default,
+         * because an upgrade should not silently make a project's request bodies stop compiling.
+         */
+        val DEFAULT_SCALARS: Map<String, Scalar> = scalars(ScalarStyle.Named)
+
+        val INLINE_SCALARS: Map<String, Scalar> = scalars(ScalarStyle.Inline)
+
+        /** [ScalarStyle.ValueObject]: branded, with a companion to construct one through. */
+        val VALUE_OBJECT_SCALARS: Map<String, Scalar> = scalars(ScalarStyle.ValueObject)
     }
 }

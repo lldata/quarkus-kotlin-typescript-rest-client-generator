@@ -136,7 +136,56 @@ from a JDK class that happens to be reachable.
 | `defaultInstanceName` | `api` | Set to null for a server-side client, so `createApi({ token })` is the only way in. |
 | `ambientHeaders` | cookie, x-forwarded-for, x-real-ip | Headers the caller never sets. Anything else refuses. |
 | `wrapperTypes` | `RestResponse`, `Uni`, `CompletionStage`, … | Return types that wrap the payload rather than being it. Matched by name, so no Quarkus artifact is needed. |
-| `scalars` | primitives inline, `java.time`/`UUID`/`URI` named | How a scalar is spelled: `Scalar.inline`, `Scalar.named` or `Scalar.branded`. `INLINE_SCALARS` is the whole-set opt-out. |
+| `scalars` | `scalars(ScalarStyle.Named)` | How much identity a wire scalar keeps — see below. Per-type overrides are ordinary map entries. |
+
+## Scalars: how much identity a `string` keeps
+
+A timestamp, an ISBN and a title are all `string` on the wire. What the client is told about that is
+a project's decision, so it is a policy rather than a default nobody chose:
+
+| `ScalarStyle` | emits | costs |
+| --- | --- | --- |
+| `Inline` | `addedAt: string` | nothing, and says nothing |
+| `Named` *(default)* | `export type Instant = string` | nothing — an alias is structurally the same type |
+| `ValueObject` | a brand plus a companion to construct through | a constructor call where a client *creates* one |
+
+```kotlin
+GeneratorOptions(
+    dtoPackages = listOf("com.example.api"),
+    scalars = GeneratorOptions.scalars(ScalarStyle.ValueObject) +
+        ("java.time.Duration" to Scalar.inline("string")),   // exceptions are map entries
+)
+```
+
+`ValueObject` emits this, and the type and the companion share a name — as close as TypeScript gets
+to a Kotlin companion object, and it reads like the library it mirrors:
+
+```ts
+export type Instant = string & { readonly __brand: "Instant" };
+
+export const Instant: CheckedScalar<string, Instant> = {
+  from: (raw: string): Instant => {
+    if (!Instant.is(raw)) throw new TypeError(`invalid Instant: ${raw}`);
+    return raw;
+  },
+  is: (raw: string): raw is Instant => /^(?:\d{4}-\d{2}-\d{2}T…)$/u.test(raw),
+};
+```
+
+**Reading costs nothing.** A brand is an intersection with `string`, so every string method,
+comparison and interpolation still works — `new Date(book.addedAt)` and
+`a.addedAt.localeCompare(b.addedAt)` are unchanged. The cost lands where a client *constructs* a
+value: `Instant.from(x)` rather than a bare string. That is the point — the string it refuses is
+usually one that came from a text input and was never checked.
+
+Where the generator knows the format — the `java.time` family, `UUID` — the companion validates.
+The pattern is anchored `^(?:…)$` on purpose: Bean Validation's `@Pattern` uses `Matcher.matches()`,
+which must match the whole input, while a JavaScript `test()` searches for a substring, so an
+unanchored port accepts `"abc123xyz"` in the client and is rejected by the server. Where the format
+is unknown, `from` brands without checking and says so rather than pretending.
+
+`Named` stays the default because branding changes call sites, and an upgrade should not silently
+stop a project's request bodies compiling.
 
 ## The transport
 
