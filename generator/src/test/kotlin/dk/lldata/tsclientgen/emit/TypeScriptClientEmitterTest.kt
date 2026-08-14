@@ -1,6 +1,8 @@
 package dk.lldata.tsclientgen.emit
 
+import dk.lldata.tsclientgen.Scalar
 import dk.lldata.tsclientgen.fixture.ApiKeyedResource
+import dk.lldata.tsclientgen.fixture.LocaleResource
 import dk.lldata.tsclientgen.fixtureModel
 import dk.lldata.tsclientgen.testOptions
 import io.kotest.matchers.string.shouldContain
@@ -171,6 +173,33 @@ class TypeScriptClientEmitterTest {
 
         failure.message!! shouldContain "X-Api-Key"
         failure.message!! shouldContain "cannot express yet"
+    }
+
+    /**
+     * A name nothing declares is a file that does not compile. This used to be emitted silently:
+     * `locale: Locale`, with no `Locale` anywhere in the output.
+     */
+    @Test
+    fun `refuses a payload type it has no spelling for`() {
+        val unmapped = fixtureModel(LocaleResource::class.java)
+
+        val failure = assertThrows<IllegalStateException> { emitter.emit(unmapped.endpoints) }
+
+        failure.message!! shouldContain "java.util.Locale"
+        failure.message!! shouldContain "dtoPackages"
+        failure.message!! shouldContain "scalars"
+    }
+
+    /** Saying so is one line, and then it is spelled like any other named scalar. */
+    @Test
+    fun `takes a spelling for a type outside the payload packages`() {
+        val unmapped = fixtureModel(LocaleResource::class.java)
+        val told = testOptions.copy(scalars = testOptions.scalars + ("java.util.Locale" to Scalar.named("Locale", "string")))
+
+        val emitted = TypeScriptClientEmitter(told).emit(unmapped.endpoints)
+
+        emitted shouldContain "export type Locale = string;"
+        emitted shouldContain "locale: Locale;"
     }
 
     /** A payload that reaches itself used to recurse until the stack ran out. */

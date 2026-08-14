@@ -86,6 +86,13 @@ class BooksResource {
 }
 
 @TypeScriptApi
+@Path("/api/locale")
+class LocaleResource {
+    @GET
+    fun unknownScalar(): UnknownScalarResponse = TODO()
+}
+
+@TypeScriptApi
 @Path("/api/comments")
 class CommentsResource {
     @GET

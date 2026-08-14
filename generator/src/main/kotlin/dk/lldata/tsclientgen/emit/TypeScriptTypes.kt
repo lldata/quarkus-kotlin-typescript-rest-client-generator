@@ -175,6 +175,16 @@ class TypeScriptTypes(
             val element = type.arguments.firstOrNull()?.type ?: return TypeName.arrayShorthandType(TypeName.implicit("unknown"))
             return TypeName.arrayShorthandType(nullableTypeOf(element))
         }
+        // A name nothing declares is a file that does not compile, and it used to be emitted
+        // silently: a `java.util.Locale` on a payload became `locale: Locale` with no `Locale` in
+        // the file. Refusing here is the same rule the emitter applies to a param shape it cannot
+        // express — say what is missing, rather than produce something that looks finished.
+        check(isDto(type)) {
+            "${klass.qualifiedName} is on the client surface and the generator has no spelling for it: it is in none of " +
+                "the dtoPackages (${options.dtoPackages.joinToString()}) and has no entry in scalars. Add its package to " +
+                "dtoPackages if it is a payload type, or map it in scalars if your serializer writes it as a scalar — " +
+                "`Scalar.named(\"${klass.simpleName}\", \"string\")`."
+        }
         return TypeName.implicit(klass.simpleName ?: "unknown")
     }
 

@@ -123,6 +123,18 @@ data class GeneratorOptions(
                 "java.time.OffsetDateTime" to Scalar.named("OffsetDateTime", "string"),
                 "java.time.ZonedDateTime" to Scalar.named("ZonedDateTime", "string"),
                 "java.time.Duration" to Scalar.named("Duration", "string"),
+                // kotlinx-datetime, whose serializers write ISO-8601 by default — the same strings
+                // the `java.time` equivalents produce, so the same aliases. `kotlin.time.Instant`
+                // is where `kotlinx.datetime.Instant` moved, and both spell one alias.
+                "kotlinx.datetime.Instant" to Scalar.named("Instant", "string"),
+                "kotlin.time.Instant" to Scalar.named("Instant", "string"),
+                "kotlinx.datetime.LocalDate" to Scalar.named("LocalDate", "string"),
+                "kotlinx.datetime.LocalTime" to Scalar.named("LocalTime", "string"),
+                "kotlinx.datetime.LocalDateTime" to Scalar.named("LocalDateTime", "string"),
+                // Deliberately absent: `kotlin.time.Duration`. kotlinx-serialization writes it
+                // ISO-8601, Jackson sees a value class and writes a number, and the generator
+                // cannot tell which is serialising. An unmapped type now refuses loudly, which is
+                // the right outcome for a type whose wire form depends on the serializer.
             )
 
         /**

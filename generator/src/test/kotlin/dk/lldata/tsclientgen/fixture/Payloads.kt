@@ -124,3 +124,8 @@ data class CommentResponse(
     val text: String,
     val replies: List<CommentResponse>,
 )
+
+/** A property whose type the generator has no rule for: not a payload, not a known scalar. */
+data class UnknownScalarResponse(
+    val locale: java.util.Locale,
+)
