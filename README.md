@@ -237,16 +237,15 @@ See [example/README.md](example/README.md) for what to look at and in which orde
 `:generator` is the library, `:annotations` is the two annotations, `:example:backend` is the
 consumer. `./gradlew ktlintFormat` before committing.
 
-### The TypeScriptPoet jar
+### TypeScriptPoet
 
-Declarations are built with [lldata/typescriptpoet](https://github.com/lldata/typescriptpoet), a
-fork of `outfoxx/typescriptpoet` — upstream stopped at 1.1.2 in 2021, and the fork adds a Kotlin DSL
-and the object-literal getter a lazy call tree is made of.
+Declarations are built with [lldata/typescriptpoet](https://github.com/lldata/typescriptpoet)
+(`dk.lldata:typescriptpoet`), a fork of `outfoxx/typescriptpoet` — upstream stopped at 1.1.2 in
+2021. The fork adds a Kotlin DSL, the object-literal getter a lazy call tree is made of, and a
+writer that breaks a call's argument list on width rather than running it off the line.
 
-It is unpublished, so `libs/typescriptpoet-2.0.0-alpha7.jar` is vendored and committed, and the
-published POM cannot declare it. **This is why the artifact is `0.1.0-SNAPSHOT` and not released**;
-publishing the fork is the prerequisite. Upgrading means dropping in a new jar and bumping the
-filename in `generator/build.gradle.kts`.
+It is on Maven Central, so there is nothing vendored here and nothing stopping this library being
+published in turn.
 
 ## Origin
 
