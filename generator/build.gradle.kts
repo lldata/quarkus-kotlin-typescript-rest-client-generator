@@ -18,7 +18,7 @@ dependencies {
     // The TypeScript writer. A fork of outfoxx/typescriptpoet, which stopped at 1.1.2 in 2021 —
     // the alpha adds the Kotlin DSL and the object-literal getter a lazy call tree is made of.
     // Unpublished, so the jar is vendored and committed; see README, "The TypeScriptPoet jar".
-    api(files(rootProject.file("libs/typescriptpoet-2.0.0-alpha6.jar")))
+    api(files(rootProject.file("libs/typescriptpoet-2.0.0-alpha7.jar")))
     api(kotlin("reflect"))
 
     // Read from the consumer's classes, never loaded by this library on its own: whichever versions

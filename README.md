@@ -20,6 +20,12 @@ where the two descriptions disagree in a way that still compiles. The compiled c
 place where the annotations, the resolved generic types and Kotlin's nullability all agree, so that
 is what this reads.
 
+The example runs `quarkus-smallrye-openapi` alongside the generator so that claim is checkable
+rather than rhetorical: on the same resources, OpenAPI spells a `@JsonValue` enum as its constant
+names, reduces a sealed hierarchy to the base's own member, and marks a `@JsonInclude(NON_NULL)`
+field required. [The comparison](example/README.md#the-control-group-what-openapi-says-about-the-same-resources)
+has the four cases side by side, including the one OpenAPI describes better.
+
 What that buys, concretely:
 
 | Kotlin | TypeScript | Why not the obvious thing |
@@ -187,7 +193,7 @@ Declarations are built with [lldata/typescriptpoet](https://github.com/lldata/ty
 fork of `outfoxx/typescriptpoet` — upstream stopped at 1.1.2 in 2021, and the fork adds a Kotlin DSL
 and the object-literal getter a lazy call tree is made of.
 
-It is unpublished, so `libs/typescriptpoet-2.0.0-alpha6.jar` is vendored and committed, and the
+It is unpublished, so `libs/typescriptpoet-2.0.0-alpha7.jar` is vendored and committed, and the
 published POM cannot declare it. **This is why the artifact is `0.1.0-SNAPSHOT` and not released**;
 publishing the fork is the prerequisite. Upgrading means dropping in a new jar and bumping the
 filename in `generator/build.gradle.kts`.

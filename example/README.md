@@ -60,6 +60,38 @@ and
 [GeneratedClientDriftTest.kt](backend/src/test/kotlin/dk/lldata/tsclientgen/example/codegen/GeneratedClientDriftTest.kt).
 Three short files, and the whole integration.
 
+## The control group: what OpenAPI says about the same resources
+
+`quarkus-smallrye-openapi` is on the example, so the same annotated classes also produce a document
+at <http://localhost:8088/q/openapi> and a UI at <http://localhost:8088/q/swagger-ui>. It is here as
+evidence rather than as documentation: the generator's whole premise is that a second description of
+the API disagrees with the first in ways that still compile, and this is where you can check that
+claim instead of taking it.
+
+Four of the example's types, as each side describes them:
+
+| | OpenAPI says | The generator says | On the wire |
+| --- | --- | --- | --- |
+| `Condition` | `enum: [NEW, USED, WORN]` | `"new" \| "used" \| "worn"` | `"worn"` — `@JsonValue` |
+| `BorrowResponse` | `{ outcome }` — the sealed base's own member, no variants | `BorrowAccepted \| BorrowRefused` | one of the two variants, in full |
+| `note` on `BookDetailResponse` | `required`, `string \| null` | `note?: string \| null` | absent — the class is `@JsonInclude(NON_NULL)` |
+| `Instant` | `string`, `format: date-time` | `string` | an ISO-8601 string |
+
+The first three are the failure this project exists to prevent: a client generated from that
+document would compare `condition === "NEW"` against a payload that says `"worn"`, would see nothing
+on a `BorrowResponse` but `outcome`, and would null-check a field that is not there. Each one
+compiles.
+
+The fourth is the other direction, and worth saying out loud: `format: date-time` is real
+information that the generated client throws away, because TypeScript has no type for it. OpenAPI is
+not worse at everything — it is worse at exactly the things a serializer decides at runtime.
+
+Two more things the document gets right and the table does not show: `AddBookRequest` marks
+`condition` and `tags` optional, matching the Kotlin defaults, and it describes the query parameters
+including `limit`'s `default: 50`. On the query parameters it even has the enum spelling the *other*
+way round — `?condition=NEW`, which is what JAX-RS converts with `valueOf` — which is the same trap
+from the other side, and why `Condition.fromString` exists.
+
 ## Trying the loop
 
 Change something in the Kotlin — rename a field, make a nullable one non-null, add a variant to

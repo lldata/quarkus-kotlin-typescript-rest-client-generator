@@ -273,6 +273,19 @@
       </section>
 
       <section>
+        <h2>The same API, described by OpenAPI</h2>
+        <p class="muted">
+          <code>quarkus-smallrye-openapi</code> reads the same classes. Compare
+          <a href="/q/openapi">the document</a> — or poke the endpoints in
+          <a href="/q/swagger-ui">Swagger UI</a> — with the generated client: it spells
+          <code>Condition</code> as <code>NEW</code> rather than the <code>"new"</code> Jackson
+          writes, reduces <code>BorrowResponse</code> to the sealed base's own <code>outcome</code>
+          with neither variant, and marks <code>note</code> required where the class omits it when
+          null. Each of those makes a client that compiles and misleads.
+        </p>
+      </section>
+
+      <section>
         <h2>The source behind this page</h2>
         <p class="muted">
           Read left to right: the Kotlin declaration, what the generator made of it, and the call
