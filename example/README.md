@@ -11,6 +11,18 @@ has a rule for.
 
 Then <http://localhost:8088>. The data is in memory, so restarting resets it.
 
+The page assumes a reasonably modern browser. The floor is set by the shipped transport, which uses
+`AbortSignal.any` and `AbortSignal.timeout` to combine a caller's abort with a per-call timeout, and
+by the page's own `replaceChildren`; nothing here is polyfilled or transpiled, because the point of
+the example is that what runs is what was generated. Check anything you are unsure of on
+[caniuse](https://caniuse.com).
+
+Worth knowing before you reach for `Temporal` in a client of your own: it is not yet everywhere —
+[caniuse.com/temporal](https://caniuse.com/temporal) had it at 69% of global usage in July 2026,
+with the gap almost entirely older Safari and iOS, where every browser is WebKit and a user cannot
+route around it. That is why converting a date is a decision for the consuming project rather than
+something the generated client does for you.
+
 ## What to read, in order
 
 Every file is linked rather than quoted, so nothing here can go stale against the code.

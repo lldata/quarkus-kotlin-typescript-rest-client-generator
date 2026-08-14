@@ -200,6 +200,10 @@ tracing headers. Keep the three exported names (`ApiConfig`, `RequestOptions`, `
 Error bodies are deliberately outside the generated types: `ApiError.body` is `unknown`. The client
 types describe what a *successful* call returns.
 
+It assumes a recent runtime: `AbortSignal.any` and `AbortSignal.timeout` combine a caller's abort
+with a per-call timeout, which is the newest thing it uses ([caniuse](https://caniuse.com)). Replace
+the module if you need to support older engines — that is what the seam is for.
+
 ## Formatting
 
 The emitter builds structure, not text, and leaves layout to the writer. If your repo formats

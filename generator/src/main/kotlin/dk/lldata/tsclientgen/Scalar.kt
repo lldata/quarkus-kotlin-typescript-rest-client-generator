@@ -50,7 +50,11 @@ sealed interface Scalar {
      *   for a substring. An unanchored port of `\d{3}` accepts `"abc123xyz"` in the client and is
      *   rejected by the server.
      * @param temporal the `Temporal` type this converts to, where one exists. Recorded here so a
-     *   conversion module can be emitted from it; nothing in the client itself refers to it.
+     *   conversion module can be emitted from it; nothing in the client itself refers to it, and
+     *   deliberately so — `Temporal` was 69% of global browser usage in July 2026
+     *   (https://caniuse.com/temporal), the gap being older Safari and iOS, and Node 24 does not
+     *   have it without `--harmony-temporal`. Whether to depend on it is a consuming project's
+     *   call, so it belongs in a module they opt into rather than in the client everyone imports.
      */
     data class Branded(
         val name: String,
