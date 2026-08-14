@@ -1,0 +1,15 @@
+{
+  "name": "tsclientgen-example-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The page that calls the generated client. Compiled to plain ES modules the browser loads directly — no bundler, so what runs is what was generated.",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,18 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 2
+
+[*.{kt,kts}]
+indent_size = 4
+max_line_length = 140
+ktlint_code_style = ktlint_official
+# The generator's rules read best as one tidy block rather than one entry per line.
+ktlint_standard_argument-list-wrapping = disabled
+
+[*.{java,xml,properties}]
+indent_size = 4

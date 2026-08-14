@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "es2022",
+    "moduleResolution": "bundler",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "rootDir": "src",
+    // Straight into what Quarkus serves, so the page the app serves is the code that was compiled.
+    "outDir": "../backend/src/main/resources/META-INF/resources/app"
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,257 @@
+package dk.lldata.tsclientgen.emit
+
+import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.annotation.JsonSubTypes
+import com.fasterxml.jackson.annotation.JsonTypeInfo
+import com.fasterxml.jackson.annotation.JsonValue
+import dk.lldata.tsclientgen.GeneratorOptions
+import dk.lldata.typescriptpoet.TypeName
+import kotlin.reflect.KClass
+import kotlin.reflect.KType
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.primaryConstructor
+import kotlin.reflect.full.starProjectedType
+
+/**
+ * How a Kotlin type on the wire is spelled in TypeScript, and which fields may be absent.
+ *
+ * The optionality rules are the part worth getting right, because both directions are easy to get
+ * plausibly wrong — and a plausibly wrong generated type compiles at every call site while reading
+ * `undefined` at runtime.
+ */
+class TypeScriptTypes(
+    private val options: GeneratorOptions,
+) {
+    /** A DTO the emitter has to declare, as opposed to something with a TypeScript spelling already. */
+    fun isDto(type: KType): Boolean {
+        val klass = type.classifier as? KClass<*> ?: return false
+        val name = klass.qualifiedName ?: return false
+        if (options.scalars.containsKey(name)) return false
+        if (isCollection(klass) || isMap(klass) || isOpaqueJson(klass)) return false
+        return options.dtoPackages.any { name == it || name.startsWith("$it.") }
+    }
+
+    /**
+     * True for a Kotlin/Java enum. Jackson writes one as a **scalar** — a string, or whatever
+     * `@JsonValue` returns — so reflecting `name`/`ordinal`/backing fields into an object type
+     * would describe the JVM's view of the constant rather than anything that reaches the wire.
+     */
+    fun isEnum(klass: KClass<*>): Boolean = klass.java.isEnum
+
+    /** True for a sealed hierarchy — on the wire a union, not the base's own members. */
+    fun isSealedUnion(klass: KClass<*>): Boolean = klass.isSealed
+
+    /**
+     * The property carrying the discriminator, from `@JsonTypeInfo`.
+     *
+     * Refuses an unmapped sealed type rather than falling back to the base's own members: that
+     * fallback emits `{ ok, type }` with none of the variants' fields, which compiles at every call
+     * site and carries nothing.
+     */
+    fun unionDiscriminatorProperty(klass: KClass<*>): String {
+        val typeInfo =
+            klass.java.getAnnotation(JsonTypeInfo::class.java)
+                ?: error(
+                    "${klass.qualifiedName} is a sealed type on the client surface with no @JsonTypeInfo. " +
+                        "The generator cannot tell which property discriminates it, and emitting only the " +
+                        "base's members would describe none of the variants.",
+                )
+        check(typeInfo.include == JsonTypeInfo.As.EXISTING_PROPERTY) {
+            "${klass.qualifiedName} must use JsonTypeInfo.As.EXISTING_PROPERTY so the variants keep writing " +
+                "the discriminator themselves and the wire is unchanged."
+        }
+        return typeInfo.property.ifEmpty { error("${klass.qualifiedName} declares @JsonTypeInfo with no property name.") }
+    }
+
+    /**
+     * Each variant and the literal its discriminator holds, from `@JsonSubTypes`.
+     *
+     * The literal has to come from a declaration: reflection can enumerate [KClass.sealedSubclasses]
+     * but cannot read a property initializer without an instance, and a variant typically fixes its
+     * discriminator in the class body.
+     */
+    fun unionVariants(klass: KClass<*>): List<Pair<KClass<*>, String>> {
+        val subTypes =
+            klass.java.getAnnotation(JsonSubTypes::class.java)
+                ?: error("${klass.qualifiedName} has @JsonTypeInfo but no @JsonSubTypes, so its variants cannot be named.")
+        return subTypes.value.map { subType ->
+            val name = subType.name.ifEmpty { error("${klass.qualifiedName} maps ${subType.value.qualifiedName} with no name.") }
+            subType.value to name
+        }
+    }
+
+    /**
+     * True for a `@JvmInline value class`. Jackson unwraps one to the value it wraps — `"ubud"`,
+     * `-8.5` — so it is a scalar on the wire for the same reason an enum is, and reflecting its
+     * single property into `{ value: T }` describes the Kotlin declaration instead of the JSON.
+     */
+    fun isValueClass(klass: KClass<*>): Boolean = klass.isValue
+
+    /** The type a value class collapses to on the wire. */
+    fun valueClassUnderlyingType(klass: KClass<*>): KType =
+        klass.primaryConstructor
+            ?.parameters
+            ?.singleOrNull()
+            ?.type
+            ?: error("${klass.qualifiedName} is a value class without a single constructor parameter — nothing to unwrap to.")
+
+    /**
+     * The literals Jackson writes for [klass]'s constants, already spelled as TypeScript.
+     *
+     * `@JsonValue` wins when present — on a property or on a no-argument method, both of which are
+     * ordinary ways to write one. Without one, Jackson writes the constant name.
+     */
+    fun enumWireLiterals(klass: KClass<*>): List<TypeName> {
+        val constants = klass.java.enumConstants
+        check(!constants.isNullOrEmpty()) { "${klass.qualifiedName} is an enum with no constants — nothing can be spelled for it." }
+        val readJsonValue = jsonValueReader(klass)
+        return constants.map { constant ->
+            literalOf(klass, readJsonValue?.invoke(constant) ?: (constant as Enum<*>).name)
+        }
+    }
+
+    /**
+     * Refuses rather than guesses: a `@JsonValue` returning something that is not a scalar has no
+     * honest TypeScript literal, and emitting a plausible one is exactly the failure this pipeline
+     * exists to prevent.
+     */
+    private fun literalOf(
+        klass: KClass<*>,
+        raw: Any?,
+    ): TypeName =
+        when (raw) {
+            is String -> TypeName.literal(raw)
+            is Int -> TypeName.literal(raw)
+            is Long -> TypeName.literal(raw)
+            is Boolean -> TypeName.literal(raw)
+            else ->
+                error(
+                    "${klass.qualifiedName} has a @JsonValue of type ${raw?.let { it::class.qualifiedName }}, " +
+                        "which has no TypeScript literal spelling. Return a string or a number, or give the " +
+                        "generator a rule for this type.",
+                )
+        }
+
+    private fun jsonValueReader(klass: KClass<*>): ((Any) -> Any?)? {
+        klass.java.declaredFields
+            .firstOrNull { it.isAnnotationPresent(JsonValue::class.java) }
+            ?.let { field ->
+                field.isAccessible = true
+                return { constant -> field.get(constant) }
+            }
+        klass.java.declaredMethods
+            .firstOrNull { it.isAnnotationPresent(JsonValue::class.java) && it.parameterCount == 0 }
+            ?.let { method ->
+                method.isAccessible = true
+                return { constant -> method.invoke(constant) }
+            }
+        return null
+    }
+
+    private fun isCollection(klass: KClass<*>): Boolean =
+        klass.qualifiedName in setOf("kotlin.collections.List", "kotlin.collections.Set", "kotlin.collections.Collection", "kotlin.Array")
+
+    private fun isMap(klass: KClass<*>): Boolean = klass.qualifiedName == "kotlin.collections.Map"
+
+    /**
+     * Jackson's `JsonNode` is an untyped blob on the wire. `unknown` says exactly that and forces
+     * the caller to narrow before using it — `any` would let it pass silently as anything.
+     */
+    private fun isOpaqueJson(klass: KClass<*>): Boolean =
+        klass.qualifiedName == "com.fasterxml.jackson.databind.JsonNode" || klass.qualifiedName == "kotlin.Any"
+
+    /** The [TypeName] for [type], ignoring nullability — the caller decides how to add `| null`. */
+    fun typeOf(type: KType): TypeName {
+        val klass = type.classifier as? KClass<*> ?: return TypeName.implicit("unknown")
+        options.scalars[klass.qualifiedName]?.let { return TypeName.implicit(it) }
+        if (isOpaqueJson(klass)) return TypeName.implicit("unknown")
+        if (isMap(klass)) {
+            val value = type.arguments.getOrNull(1)?.type ?: return TypeName.recordType(TypeName.STRING, TypeName.implicit("unknown"))
+            val key = type.arguments.getOrNull(0)?.type
+            return TypeName.recordType(if (key != null) typeOf(key) else TypeName.STRING, nullableTypeOf(value))
+        }
+        if (isCollection(klass)) {
+            val element = type.arguments.firstOrNull()?.type ?: return TypeName.arrayShorthandType(TypeName.implicit("unknown"))
+            return TypeName.arrayShorthandType(nullableTypeOf(element))
+        }
+        return TypeName.implicit(klass.simpleName ?: "unknown")
+    }
+
+    /** [typeOf] plus `| null` when the Kotlin type is nullable. */
+    fun nullableTypeOf(type: KType): TypeName = if (type.isMarkedNullable) TypeName.unionType(typeOf(type), TypeName.NULL) else typeOf(type)
+
+    /** The one-line spelling of [typeOf]. */
+    fun render(type: KType): String = typeOf(type).toString()
+
+    /** The one-line spelling of [nullableTypeOf]. */
+    fun renderNullable(type: KType): String = nullableTypeOf(type).toString()
+
+    /**
+     * Every DTO reachable from [roots], including the roots — the emitter has to declare all of them.
+     * Depth-first so a type is declared before whatever refers to it.
+     */
+    fun reachableDtos(roots: List<KType>): List<KClass<*>> {
+        val ordered = LinkedHashSet<KClass<*>>()
+        // Marked on entry, not on completion. A DTO that reaches itself — a message quoting a
+        // message — would otherwise recurse until the stack runs out, because `ordered` is only
+        // written after the walk returns.
+        val visiting = mutableSetOf<KClass<*>>()
+
+        fun visit(type: KType) {
+            val klass = type.classifier as? KClass<*> ?: return
+            if (isCollection(klass) || isMap(klass)) {
+                for (argument in type.arguments.mapNotNull { it.type }) visit(argument)
+                return
+            }
+            if (!isDto(type) || !visiting.add(klass)) return
+            // An enum still has to be declared, but its members are the JVM's business, not the
+            // wire's — walking them would pull `name`/`ordinal` in as if they were fields.
+            if (isEnum(klass)) {
+                ordered.add(klass)
+                return
+            }
+            if (isValueClass(klass)) {
+                visit(valueClassUnderlyingType(klass))
+                ordered.add(klass)
+                return
+            }
+            // A sealed base contributes nothing of its own: the union is its variants, so those
+            // are what have to be declared — and declared first, since the alias names them.
+            if (isSealedUnion(klass)) {
+                for ((variant, _) in unionVariants(klass)) visit(variant.starProjectedType)
+                ordered.add(klass)
+                return
+            }
+            for (property in klass.memberProperties) visit(property.returnType)
+            ordered.add(klass)
+        }
+        for (root in roots) visit(root)
+        return ordered.toList()
+    }
+
+    /**
+     * True when a **response** field may be absent from the JSON.
+     *
+     * Jackson writes a defaulted field regardless — the default decides what is written, not whether
+     * it is written. Only `@JsonInclude(NON_NULL)` on the declaring class can drop a field, and then
+     * only a null one. Reading "has default" as "optional" here would mark most of a response
+     * surface optional and make every consumer null-check fields that are always present.
+     */
+    fun isOptionalResponseField(
+        declaring: KClass<*>,
+        propertyType: KType,
+    ): Boolean {
+        val include = declaring.java.getAnnotation(JsonInclude::class.java) ?: return false
+        return include.value == JsonInclude.Include.NON_NULL && propertyType.isMarkedNullable
+    }
+
+    /** True when a **request** field may be omitted: the Kotlin constructor supplies a default. */
+    fun isOptionalRequestField(
+        declaring: KClass<*>,
+        propertyName: String,
+    ): Boolean =
+        declaring.primaryConstructor
+            ?.parameters
+            ?.firstOrNull { it.name == propertyName }
+            ?.isOptional == true
+}

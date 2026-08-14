@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Quarkus
+.quarkus/
+
+# The compiled demo page. Its sources are in example/web/src, and the generated client there is
+# committed — this is just `tsc` output, rebuilt with `npm run build`.
+example/backend/src/main/resources/META-INF/resources/app/
+
+# Node
+node_modules/
+
+# Editors and OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Kotlin build tooling
+.kotlin/

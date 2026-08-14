@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      # The library, the lint, and the example — including the drift test, which is what makes a
+      # stale committed client a build failure rather than a runtime surprise.
+      - run: ./gradlew build ktlintCheck --no-daemon
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: example/web/package-lock.json
+
+      # The generated client has to type-check, and so does the page written against it.
+      - run: npm ci
+        working-directory: example/web
+      - run: npm run typecheck
+        working-directory: example/web

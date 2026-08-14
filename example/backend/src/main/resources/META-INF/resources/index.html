@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Generated client — bookshelf example</title>
+    <style>
+      :root {
+        --bg: #fbfaf8;
+        --panel: #ffffff;
+        --ink: #1d1c1a;
+        --muted: #6d6a64;
+        --line: #e3e0d9;
+        --accent: #2f6f4f;
+        --danger: #98342b;
+        --radius: 10px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #17181a;
+          --panel: #1f2124;
+          --ink: #ece9e3;
+          --muted: #9a968e;
+          --line: #33363b;
+          --accent: #74c39a;
+          --danger: #e08c82;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 2rem 1.25rem 4rem;
+        background: var(--bg);
+        color: var(--ink);
+        font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main {
+        max-width: 60rem;
+        margin: 0 auto;
+        display: grid;
+        gap: 1.25rem;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0;
+      }
+      h2 {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin: 0 0 0.75rem;
+      }
+      h3 {
+        margin: 0 0 0.25rem;
+      }
+      p {
+        margin: 0.4rem 0;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.85em;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 1rem 1.1rem;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button.danger:hover {
+        border-color: var(--danger);
+        color: var(--danger);
+      }
+      .chip.selected {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--bg);
+      }
+      .chip.small {
+        font-size: 0.8rem;
+        padding: 0.1rem 0.55rem;
+      }
+      input,
+      select {
+        font: inherit;
+        color: inherit;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0.3rem 0.5rem;
+      }
+      input[type="text"] {
+        min-width: 8rem;
+      }
+      .book {
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 0.7rem 0;
+        border-top: 1px solid var(--line);
+      }
+      .book:first-child {
+        border-top: 0;
+      }
+      .book strong {
+        margin-right: 0.4rem;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        align-items: center;
+        margin-top: 0.35rem;
+        font-size: 0.85rem;
+      }
+      .actions {
+        display: flex;
+        gap: 0.35rem;
+        flex-shrink: 0;
+      }
+      .pill {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0.05rem 0.5rem;
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      .pill.new {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+      .pill.out {
+        color: var(--danger);
+        border-color: var(--danger);
+      }
+      .note {
+        border-left: 3px solid var(--accent);
+        padding-left: 0.6rem;
+      }
+      form.grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+        gap: 0.5rem;
+        align-items: center;
+      }
+      ol#log {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.25rem;
+        font-size: 0.85rem;
+      }
+      ol#log li {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        border-left: 3px solid var(--accent);
+        padding-left: 0.6rem;
+      }
+      ol#log li.bad {
+        border-left-color: var(--danger);
+      }
+      ol#log span {
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      ul.sources {
+        margin: 0;
+        padding-left: 1.1rem;
+        display: grid;
+        gap: 0.3rem;
+        color: var(--muted);
+      }
+      ul.sources a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Bookshelf</h1>
+        <p class="muted">
+          Every call on this page goes through
+          <code>example/web/src/generated/client.ts</code>, generated from the Kotlin resources in
+          <code>example/backend</code>. No URL is spelled in the page, and no response shape is
+          declared twice.
+        </p>
+      </header>
+
+      <section>
+        <h2>Shelves</h2>
+        <div class="row" id="shelves">
+          <span class="muted">
+            Loading. If this stays, build the page first:
+            <code>npm ci &amp;&amp; npm run build</code> in <code>example/web</code>.
+          </span>
+        </div>
+      </section>
+
+      <section>
+        <h2>Books</h2>
+        <div class="row">
+          <input id="q" type="text" placeholder="search title, author, tag" />
+          <select id="condition">
+            <option value="">any condition</option>
+            <option value="new">new</option>
+            <option value="used">used</option>
+            <option value="worn">worn</option>
+          </select>
+          <select id="sort">
+            <option value="TITLE">by title</option>
+            <option value="AUTHOR">by author</option>
+            <option value="ADDED">newest first</option>
+          </select>
+          <input id="limit" type="number" min="1" max="50" value="50" title="limit" />
+          <input id="borrower" type="text" value="mia" title="who borrows" style="max-width: 7rem" />
+          <span class="muted" id="summary"></span>
+        </div>
+        <div class="row" id="tags" style="margin-top: 0.6rem"></div>
+        <div id="books" style="margin-top: 0.4rem"></div>
+      </section>
+
+      <section id="detail-panel">
+        <h2>Detail</h2>
+        <div id="detail"><p class="muted">Pick a book to load its detail.</p></div>
+      </section>
+
+      <section>
+        <h2>Add a book</h2>
+        <form id="add" class="grid">
+          <input name="isbn" type="text" placeholder="ISBN" required />
+          <input name="title" type="text" placeholder="Title" required />
+          <input name="author" type="text" placeholder="Author" required />
+          <select name="condition">
+            <option value="new">new</option>
+            <option value="used">used</option>
+            <option value="worn">worn</option>
+          </select>
+          <input name="tags" type="text" placeholder="tags, comma separated" />
+          <button type="submit">Add</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>Calls</h2>
+        <ol id="log"></ol>
+      </section>
+
+      <section>
+        <h2>The source behind this page</h2>
+        <p class="muted">
+          Read left to right: the Kotlin declaration, what the generator made of it, and the call
+          site. Links open the files on GitHub, syntax-highlighted.
+        </p>
+        <ul class="sources">
+          <li>
+            <a href="https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/blob/main/example/backend/src/main/kotlin/dk/lldata/tsclientgen/example/Payloads.kt"
+              ><code>Payloads.kt</code></a
+            >
+            — the wire vocabulary: enums, value classes, the sealed borrow result
+          </li>
+          <li>
+            <a href="https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/blob/main/example/backend/src/main/kotlin/dk/lldata/tsclientgen/example/BooksResource.kt"
+              ><code>BooksResource.kt</code></a
+            >
+            — the endpoints every button on this page calls
+          </li>
+          <li>
+            <a href="https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/blob/main/example/web/src/generated/client.ts"
+              ><code>generated/client.ts</code></a
+            >
+            — what the generator emitted, committed and gated by a drift test
+          </li>
+          <li>
+            <a href="https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/blob/main/example/web/src/generated/client-runtime.ts"
+              ><code>generated/client-runtime.ts</code></a
+            >
+            — the transport, the one file that knows how a request is made
+          </li>
+          <li>
+            <a href="https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/blob/main/example/web/src/app.ts"
+              ><code>app.ts</code></a
+            >
+            — this page, which spells no URL and casts no response
+          </li>
+        </ul>
+      </section>
+    </main>
+    <script type="module" src="/app/app.js"></script>
+  </body>
+</html>
