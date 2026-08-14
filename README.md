@@ -67,14 +67,25 @@ The module-level `api` is for the browser, where the cookie is the credential.
 
 ## Using it
 
+**0. Get the artifacts.** Not on Maven Central yet, so build and install them:
+
+```bash
+./gradlew publishToMavenLocal
+```
+
 **1. Annotate the resources you want a client for.** Opt-in, so a new resource is outside the client
 until someone says so — the review point for "is this part of the contract the browser calls", which
 the path alone cannot answer.
 
 ```kotlin
+repositories {
+    mavenLocal()     // where the two artifacts below are, until they are published
+    mavenCentral()   // where dk.lldata:typescriptpoet is
+}
+
 dependencies {
-    implementation("dk.lldata:quarkus-kotlin-typescript-rest-client-annotations:0.1.0-SNAPSHOT")
-    testImplementation("dk.lldata:quarkus-kotlin-typescript-rest-client-generator:0.1.0-SNAPSHOT")
+    implementation("dk.lldata:quarkus-kotlin-typescript-rest-client-annotations:1.0.0-alpha1")
+    testImplementation("dk.lldata:quarkus-kotlin-typescript-rest-client-generator:1.0.0-alpha1")
 }
 ```
 
@@ -256,11 +267,21 @@ See [example/README.md](example/README.md) for what to look at and in which orde
 ## Building this repo
 
 ```bash
-./gradlew build
+./gradlew build                # library, annotations, example, drift test and lint
+./gradlew publishToMavenLocal  # installs both artifacts into ~/.m2 for other projects
 ```
 
 `:generator` is the library, `:annotations` is the two annotations, `:example:backend` is the
 consumer. `./gradlew ktlintFormat` before committing.
+
+The version is set once, in `gradle.properties`, so the two published artifacts cannot drift apart.
+
+### Publishing
+
+`publishToMavenLocal` is the whole story for now — there is no repository configured to publish to,
+deliberately. Maven Central would need signing keys, a Portal account and a `repositories` block in
+the publication; nothing in the code stands in the way any more, since the last blocker (a vendored
+jar that a POM cannot declare) is gone.
 
 ### TypeScriptPoet
 

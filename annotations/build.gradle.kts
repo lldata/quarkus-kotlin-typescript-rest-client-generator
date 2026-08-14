@@ -5,9 +5,6 @@ plugins {
     id("org.jlleitschuh.gradle.ktlint")
 }
 
-group = "dk.lldata"
-version = "0.1.0-SNAPSHOT"
-
 repositories {
     mavenCentral()
 }
