@@ -270,9 +270,35 @@ function escape(text: string): string {
   return holder.innerHTML;
 }
 
-for (const control of [search, conditionFilter, sortField, limitField]) {
-  control.addEventListener("change", () => void loadBooks());
+/**
+ * Nothing here is polyfilled or transpiled — the point of the example is that what runs is what was
+ * generated — so a browser missing something the page needs would otherwise show a blank panel and
+ * an error in a console nobody has open. Say so instead.
+ *
+ * These are what the page actually uses. `Temporal` is deliberately not among them: converting a
+ * date is a consuming project's decision, and this page does not make it.
+ */
+function missingCapabilities(): string[] {
+  const missing: string[] = [];
+  const signals = typeof AbortSignal !== "undefined";
+  if (!signals || typeof AbortSignal.any !== "function") missing.push("AbortSignal.any");
+  if (!signals || typeof AbortSignal.timeout !== "function") missing.push("AbortSignal.timeout");
+  if (typeof Element.prototype.replaceChildren !== "function") missing.push("replaceChildren");
+  return missing;
 }
-search.addEventListener("input", () => void loadBooks());
 
-void loadShelves();
+const missing = missingCapabilities();
+if (missing.length > 0) {
+  const warning = document.createElement("section");
+  warning.innerHTML =
+    `<h2>This browser is missing something</h2><p>The page needs <code>${missing.join("</code>, <code>")}</code>` +
+    ` and this browser has neither a polyfill nor them. See <a href="https://caniuse.com">caniuse</a>.</p>`;
+  document.querySelector("main")?.prepend(warning);
+} else {
+  for (const control of [search, conditionFilter, sortField, limitField]) {
+    control.addEventListener("change", () => void loadBooks());
+  }
+  search.addEventListener("input", () => void loadBooks());
+
+  void loadShelves();
+}
