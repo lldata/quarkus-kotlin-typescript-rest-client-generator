@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonValue
 import dk.lldata.tsclientgen.GeneratorOptions
+import dk.lldata.tsclientgen.Scalar
 import dk.lldata.typescriptpoet.TypeName
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -163,7 +164,7 @@ class TypeScriptTypes(
     /** The [TypeName] for [type], ignoring nullability — the caller decides how to add `| null`. */
     fun typeOf(type: KType): TypeName {
         val klass = type.classifier as? KClass<*> ?: return TypeName.implicit("unknown")
-        options.scalars[klass.qualifiedName]?.let { return TypeName.implicit(it) }
+        options.scalars[klass.qualifiedName]?.let { return TypeName.implicit(it.reference) }
         if (isOpaqueJson(klass)) return TypeName.implicit("unknown")
         if (isMap(klass)) {
             val value = type.arguments.getOrNull(1)?.type ?: return TypeName.recordType(TypeName.STRING, TypeName.implicit("unknown"))
@@ -186,12 +187,29 @@ class TypeScriptTypes(
     /** The one-line spelling of [nullableTypeOf]. */
     fun renderNullable(type: KType): String = nullableTypeOf(type).toString()
 
+    /** Everything the emitter has to declare for [roots] to resolve. */
+    data class Reachable(
+        val dtos: List<KClass<*>>,
+        /**
+         * The scalars that have to be declared, in first-seen order and distinct by name — two
+         * Kotlin types may legitimately map onto one alias.
+         */
+        val namedScalars: List<Scalar>,
+    )
+
+    /** Convenience for callers that only care about the payload types — the contract lint does. */
+    fun reachableDtos(roots: List<KType>): List<KClass<*>> = reachable(roots).dtos
+
     /**
-     * Every DTO reachable from [roots], including the roots — the emitter has to declare all of them.
+     * Every DTO and named scalar reachable from [roots], including the roots.
      * Depth-first so a type is declared before whatever refers to it.
+     *
+     * One traversal for both, on purpose: a second walk that collected scalars separately would be
+     * a copy of this one, and the copy is what stops looking through the property one level down.
      */
-    fun reachableDtos(roots: List<KType>): List<KClass<*>> {
+    fun reachable(roots: List<KType>): Reachable {
         val ordered = LinkedHashSet<KClass<*>>()
+        val scalars = LinkedHashMap<String, Scalar>()
         // Marked on entry, not on completion. A DTO that reaches itself — a message quoting a
         // message — would otherwise recurse until the stack runs out, because `ordered` is only
         // written after the walk returns.
@@ -203,6 +221,9 @@ class TypeScriptTypes(
                 for (argument in type.arguments.mapNotNull { it.type }) visit(argument)
                 return
             }
+            options.scalars[klass.qualifiedName]
+                ?.takeIf { it.declaration != null }
+                ?.let { scalars.putIfAbsent(it.reference, it) }
             if (!isDto(type) || !visiting.add(klass)) return
             // An enum still has to be declared, but its members are the JVM's business, not the
             // wire's — walking them would pull `name`/`ordinal` in as if they were fields.
@@ -211,6 +232,7 @@ class TypeScriptTypes(
                 return
             }
             if (isValueClass(klass)) {
+                // The type it unwraps to may itself be a named scalar: `value class Timestamp(val at: Instant)`.
                 visit(valueClassUnderlyingType(klass))
                 ordered.add(klass)
                 return
@@ -226,7 +248,7 @@ class TypeScriptTypes(
             ordered.add(klass)
         }
         for (root in roots) visit(root)
-        return ordered.toList()
+        return Reachable(ordered.toList(), scalars.values.toList())
     }
 
     /**

@@ -38,6 +38,7 @@ What that buys, concretely:
 | `RestResponse<Void>` | `Promise<void>` | The status is the whole answer, and `response.json()` throws on an empty body. |
 | `@BeanParam BookQuery` | `{ q?: string; limit?: number }` | On the wire a bean param is not a thing; its fields are ordinary query parameters. |
 | `@DefaultValue("50") limitRaw: Int` | `` /** Server default: `50`. */ limit?: number `` | Named as the wire names it, and the caller is told what omitting it means. |
+| `java.time.Instant` | `type Instant = string` | ISO-8601 on the wire, but named rather than inlined — the client can still say it is a timestamp. Inline or brand it instead: see [`Scalar`](generator/src/main/kotlin/dk/lldata/tsclientgen/Scalar.kt). |
 
 Anything it cannot express honestly, it refuses to emit. A header parameter the caller would have to
 set itself fails the build rather than producing a call that compiles and silently omits it.
@@ -135,7 +136,7 @@ from a JDK class that happens to be reachable.
 | `defaultInstanceName` | `api` | Set to null for a server-side client, so `createApi({ token })` is the only way in. |
 | `ambientHeaders` | cookie, x-forwarded-for, x-real-ip | Headers the caller never sets. Anything else refuses. |
 | `wrapperTypes` | `RestResponse`, `Uni`, `CompletionStage`, … | Return types that wrap the payload rather than being it. Matched by name, so no Quarkus artifact is needed. |
-| `scalars` | Kotlin primitives, `java.time`, `UUID`, … | Types that already have a TypeScript spelling. Extend it for anything your serializer flattens. |
+| `scalars` | primitives inline, `java.time`/`UUID`/`URI` named | How a scalar is spelled: `Scalar.inline`, `Scalar.named` or `Scalar.branded`. `INLINE_SCALARS` is the whole-set opt-out. |
 
 ## The transport
 

@@ -57,8 +57,11 @@ data class GeneratorOptions(
      * `write-dates-as-timestamps` off — the Quarkus default. Add your own for anything else a
      * serializer flattens to a scalar: a `BigDecimal` written as a string, a `UUID`, a
      * project-wide wrapper with a custom serializer.
+     *
+     * A [Scalar.Named] keeps the name the Kotlin type had, which is the same treatment a
+     * `@JvmInline value class` gets — see [Scalar].
      */
-    val scalars: Map<String, String> = DEFAULT_SCALARS,
+    val scalars: Map<String, Scalar> = DEFAULT_SCALARS,
 ) {
     init {
         require(dtoPackages.isNotEmpty()) {
@@ -88,27 +91,52 @@ data class GeneratorOptions(
                 "java.util.concurrent.CompletableFuture",
             )
 
-        val DEFAULT_SCALARS: Map<String, String> =
+        /**
+         * The primitives are inline, because `string` is the whole truth about a `String`.
+         *
+         * The rest are named: a timestamp, an identifier and a duration are all "a string" only in
+         * the sense that everything is. Naming them costs nothing — they stay structurally
+         * assignable to `string` — and it is the only thing standing between a client that says
+         * `addedAt: Instant` and one that says `addedAt: string`, which is the same information a
+         * `format: date-time` in an OpenAPI document carries.
+         */
+        val DEFAULT_SCALARS: Map<String, Scalar> =
             mapOf(
-                "kotlin.String" to "string",
-                "kotlin.Char" to "string",
-                "kotlin.Int" to "number",
-                "kotlin.Long" to "number",
-                "kotlin.Short" to "number",
-                "kotlin.Byte" to "number",
-                "kotlin.Double" to "number",
-                "kotlin.Float" to "number",
-                "kotlin.Boolean" to "boolean",
-                "java.math.BigDecimal" to "number",
-                "java.util.UUID" to "string",
-                "java.net.URI" to "string",
-                "java.time.Instant" to "string",
-                "java.time.LocalDate" to "string",
-                "java.time.LocalTime" to "string",
-                "java.time.LocalDateTime" to "string",
-                "java.time.OffsetDateTime" to "string",
-                "java.time.ZonedDateTime" to "string",
-                "java.time.Duration" to "string",
+                "kotlin.String" to Scalar.inline("string"),
+                "kotlin.Char" to Scalar.inline("string"),
+                "kotlin.Int" to Scalar.inline("number"),
+                "kotlin.Long" to Scalar.inline("number"),
+                "kotlin.Short" to Scalar.inline("number"),
+                "kotlin.Byte" to Scalar.inline("number"),
+                "kotlin.Double" to Scalar.inline("number"),
+                "kotlin.Float" to Scalar.inline("number"),
+                "kotlin.Boolean" to Scalar.inline("boolean"),
+                // A JSON number, and the precision a BigDecimal exists for is already gone by the
+                // time it is one. Named, so a reader can see where that happened.
+                "java.math.BigDecimal" to Scalar.named("BigDecimal", "number"),
+                "java.util.UUID" to Scalar.named("UUID", "string"),
+                "java.net.URI" to Scalar.named("URI", "string"),
+                "java.time.Instant" to Scalar.named("Instant", "string"),
+                "java.time.LocalDate" to Scalar.named("LocalDate", "string"),
+                "java.time.LocalTime" to Scalar.named("LocalTime", "string"),
+                "java.time.LocalDateTime" to Scalar.named("LocalDateTime", "string"),
+                "java.time.OffsetDateTime" to Scalar.named("OffsetDateTime", "string"),
+                "java.time.ZonedDateTime" to Scalar.named("ZonedDateTime", "string"),
+                "java.time.Duration" to Scalar.named("Duration", "string"),
             )
+
+        /**
+         * Every scalar inlined, so a timestamp is spelled `string` at each use site and nothing is
+         * declared for it.
+         *
+         * The other defensible position, and one line to adopt:
+         * `GeneratorOptions(dtoPackages = …, scalars = GeneratorOptions.INLINE_SCALARS)`. It reads
+         * as less noise and less to learn; the cost is that the client can no longer tell a
+         * timestamp from a title, which is exactly what an OpenAPI `format: date-time` is for.
+         *
+         * Neither is wrong. Mix them per type if the whole-set answer fits badly —
+         * `DEFAULT_SCALARS + ("java.time.Duration" to Scalar.inline("string"))`.
+         */
+        val INLINE_SCALARS: Map<String, Scalar> = DEFAULT_SCALARS.mapValues { (_, scalar) -> Scalar.inline(scalar.spelling) }
     }
 }

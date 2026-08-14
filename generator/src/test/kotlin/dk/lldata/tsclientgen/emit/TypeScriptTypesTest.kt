@@ -2,6 +2,8 @@ package dk.lldata.tsclientgen.emit
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonValue
+import dk.lldata.tsclientgen.GeneratorOptions
+import dk.lldata.tsclientgen.Scalar
 import dk.lldata.tsclientgen.fixture.BookDto
 import dk.lldata.tsclientgen.fixture.BorrowAccepted
 import dk.lldata.tsclientgen.fixture.BorrowOutcome
@@ -65,11 +67,47 @@ class TypeScriptTypesTest {
         types.render(typeOf<Boolean>()) shouldBe "boolean"
     }
 
-    /** ISO-8601 on the wire, because Quarkus turns off write-dates-as-timestamps. */
+    /**
+     * ISO-8601 on the wire, because Quarkus turns off write-dates-as-timestamps — but named, so the
+     * client can still say which scalar it is. A value class gets exactly this treatment already.
+     */
     @Test
-    fun `renders java time types as strings`() {
-        types.render(typeOf<java.time.Instant>()) shouldBe "string"
-        types.render(typeOf<java.time.LocalDate>()) shouldBe "string"
+    fun `names the java time types rather than inlining them as string`() {
+        types.render(typeOf<java.time.Instant>()) shouldBe "Instant"
+        types.render(typeOf<java.time.LocalDate>()) shouldBe "LocalDate"
+        types.reachable(listOf(typeOf<java.time.Instant>())).namedScalars.map { it.reference } shouldBe listOf("Instant")
+    }
+
+    /** The other position, and one line to adopt. */
+    @Test
+    fun `inlines every scalar when the project asks for it`() {
+        val inline = TypeScriptTypes(testOptions.copy(scalars = GeneratorOptions.INLINE_SCALARS))
+
+        inline.render(typeOf<java.time.Instant>()) shouldBe "string"
+        inline.reachable(listOf(typeOf<java.time.Instant>())).namedScalars shouldBe emptyList()
+    }
+
+    /** A brand is the third position: same JSON, but a bare string will not do. */
+    @Test
+    fun `brands a scalar when the project asks for it`() {
+        val branded =
+            TypeScriptTypes(
+                testOptions.copy(scalars = testOptions.scalars + ("java.time.Instant" to Scalar.branded("Instant", "string"))),
+            )
+
+        branded.render(typeOf<java.time.Instant>()) shouldBe "Instant"
+        branded
+            .reachable(listOf(typeOf<java.time.Instant>()))
+            .namedScalars
+            .single()
+            .declaration shouldBe
+            """string & { readonly __brand: "Instant" }"""
+    }
+
+    /** Reached one property deep, by the same walk that finds the DTOs — not a second traversal. */
+    @Test
+    fun `finds a named scalar nested inside a payload`() {
+        types.reachable(listOf(typeOf<BookDto>())).namedScalars.map { it.reference } shouldBe listOf("Instant")
     }
 
     @Test

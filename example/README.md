@@ -75,16 +75,21 @@ Four of the example's types, as each side describes them:
 | `Condition` | `enum: [NEW, USED, WORN]` | `"new" \| "used" \| "worn"` | `"worn"` — `@JsonValue` |
 | `BorrowResponse` | `{ outcome }` — the sealed base's own member, no variants | `BorrowAccepted \| BorrowRefused` | one of the two variants, in full |
 | `note` on `BookDetailResponse` | `required`, `string \| null` | `note?: string \| null` | absent — the class is `@JsonInclude(NON_NULL)` |
-| `Instant` | `string`, `format: date-time` | `string` | an ISO-8601 string |
+| `Instant` | `string`, `format: date-time` | `Instant` (`= string`) | an ISO-8601 string |
 
 The first three are the failure this project exists to prevent: a client generated from that
 document would compare `condition === "NEW"` against a payload that says `"worn"`, would see nothing
 on a `BorrowResponse` but `outcome`, and would null-check a field that is not there. Each one
 compiles.
 
-The fourth is the other direction, and worth saying out loud: `format: date-time` is real
-information that the generated client throws away, because TypeScript has no type for it. OpenAPI is
-not worse at everything — it is worse at exactly the things a serializer decides at runtime.
+The fourth is the closest OpenAPI comes to winning, and it is worth saying out loud. `format:
+date-time` is a claim about the *shape* of the string; `export type Instant = string` is only a
+name, structurally identical to `string`, so nothing stops a title being assigned to it. The
+generator names the scalar rather than inlining it — the same treatment `Isbn` gets, since both are
+"a scalar with a name in Kotlin" — but naming buys documentation, not enforcement.
+`Scalar.branded("Instant", "string")` buys the enforcement, at the cost of a cast wherever a client
+*constructs* one. All three positions are one line in `GeneratorOptions.scalars`; see
+[Scalar.kt](../generator/src/main/kotlin/dk/lldata/tsclientgen/Scalar.kt).
 
 Two more things the document gets right and the table does not show: `AddBookRequest` marks
 `condition` and `tags` optional, matching the Kotlin defaults, and it describes the query parameters

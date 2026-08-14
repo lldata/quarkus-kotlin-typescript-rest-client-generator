@@ -66,7 +66,8 @@ class TypeScriptClientEmitter(
                 .flatMap { it.params }
                 .filter { it.source == ParamSource.PATH || it.source == ParamSource.QUERY }
                 .map { it.type }
-        val dtos = types.reachableDtos(responseTypes + requestBodyTypes + parameterTypes)
+        val reachable = types.reachable(responseTypes + requestBodyTypes + parameterTypes)
+        val dtos = reachable.dtos
         val requestDtos = types.reachableDtos(requestBodyTypes).toSet()
 
         val discriminators = mutableMapOf<KClass<*>, Pair<String, String>>()
@@ -82,6 +83,10 @@ class TypeScriptClientEmitter(
         val spec =
             file("client") {
                 addComment(options.header)
+                // First, because everything below may refer to one and nothing here refers back.
+                for (scalar in reachable.namedScalars) {
+                    type(scalar.reference, TypeName.implicit(scalar.declaration!!), Modifier.EXPORT)
+                }
                 for (dto in dtos) {
                     when {
                         // A union of the literals Jackson writes, not an interface: the wire carries

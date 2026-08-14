@@ -2,6 +2,8 @@
 // the generator, and re-run `./gradlew :example:backend:generateApiClient`.
 import { ApiConfig, RequestOptions, apiRequest } from "./client-runtime.js";
 
+export type Instant = string;
+
 export type ShelfSlug = string;
 
 export interface Shelf {
@@ -20,7 +22,7 @@ export interface Book {
   author: string;
   condition: Condition;
   tags: string[];
-  addedAt: string;
+  addedAt: Instant;
   borrowedBy: string | null;
 }
 
@@ -40,7 +42,7 @@ export type BorrowOutcome = "accepted" | "refused";
 
 export interface BorrowAccepted {
   borrower: string;
-  dueAt: string;
+  dueAt: Instant;
   outcome: "accepted";
 }
 
