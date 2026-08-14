@@ -4,21 +4,17 @@ import { ApiConfig, RequestOptions, apiRequest } from "./client-runtime.js";
 
 export type ShelfSlug = string;
 
-export interface ShelfDto {
+export interface Shelf {
   slug: ShelfSlug;
   name: string;
   bookCount: number;
-}
-
-export interface ShelvesResponse {
-  shelves: ShelfDto[];
 }
 
 export type Condition = "new" | "used" | "worn";
 
 export type Isbn = string;
 
-export interface BookDto {
+export interface Book {
   isbn: Isbn;
   title: string;
   author: string;
@@ -29,15 +25,15 @@ export interface BookDto {
 }
 
 export interface BookListResponse {
-  books: BookDto[];
+  books: Book[];
   total: number;
   tagCounts: Record<string, number>;
 }
 
 export interface BookDetailResponse {
-  book: BookDto;
+  book: Book;
   note?: string | null;
-  alsoOnThisShelf: BookDto[];
+  alsoOnThisShelf: Book[];
 }
 
 export type BorrowOutcome = "accepted" | "refused";
@@ -180,7 +176,7 @@ function shelvesNode(path: string, config: ApiConfig) {
       `${path}/${encodeURIComponent(String(shelf))}`,
       config,
     ),
-    get: (options?: RequestOptions): Promise<ShelvesResponse> => apiRequest<ShelvesResponse>(
+    get: (options?: RequestOptions): Promise<Shelf[]> => apiRequest<Shelf[]>(
       { method: "GET", path },
       config,
       options,

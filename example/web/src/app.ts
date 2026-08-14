@@ -6,16 +6,16 @@
  */
 import {
   api,
-  type BookDto,
+  type Book,
   type BookListResponse,
   type Condition,
-  type ShelfDto,
+  type Shelf,
   type SortField,
 } from "./generated/client.js";
 import { ApiError } from "./generated/client-runtime.js";
 
 type State = {
-  shelves: ShelfDto[];
+  shelves: Shelf[];
   shelf: string | null;
   list: BookListResponse | null;
   detailOf: string | null;
@@ -70,10 +70,11 @@ function note(what: string, detail: string, kind: "ok" | "bad"): void {
 }
 
 async function loadShelves(): Promise<void> {
-  const response = await call("api.shelves.get()", () => api.shelves.get());
-  if (response == null) return;
-  state.shelves = response.shelves;
-  state.shelf ??= response.shelves[0]?.slug ?? null;
+  const shelves = await call("api.shelves.get()", () => api.shelves.get());
+  if (shelves == null) return;
+  // A bare `Shelf[]`: the endpoint has nothing to say alongside the list, so it does not wrap one.
+  state.shelves = shelves;
+  state.shelf ??= shelves[0]?.slug ?? null;
   renderShelves();
   await loadBooks();
 }
@@ -223,7 +224,7 @@ function renderBooks(): void {
   bookList.replaceChildren(...list.books.map(bookRow));
 }
 
-function bookRow(book: BookDto): HTMLElement {
+function bookRow(book: Book): HTMLElement {
   const row = document.createElement("article");
   row.className = "book";
   row.innerHTML = `

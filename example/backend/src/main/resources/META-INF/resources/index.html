@@ -280,16 +280,28 @@
         </p>
         <ul class="sources">
           <li>
+            <a href="https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/blob/main/example/backend/src/main/kotlin/dk/lldata/tsclientgen/example/Domain.kt"
+              ><code>Domain.kt</code></a
+            >
+            — the vocabulary: enums, value classes, and the books and shelves themselves
+          </li>
+          <li>
             <a href="https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/blob/main/example/backend/src/main/kotlin/dk/lldata/tsclientgen/example/Payloads.kt"
               ><code>Payloads.kt</code></a
             >
-            — the wire vocabulary: enums, value classes, the sealed borrow result
+            — the shapes a call needs beyond a book, including the sealed borrow result
+          </li>
+          <li>
+            <a href="https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/blob/main/example/backend/src/main/kotlin/dk/lldata/tsclientgen/example/Catalogue.kt"
+              ><code>Catalogue.kt</code></a
+            >
+            — every rule about books, and not one mention of HTTP
           </li>
           <li>
             <a href="https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/blob/main/example/backend/src/main/kotlin/dk/lldata/tsclientgen/example/BooksResource.kt"
               ><code>BooksResource.kt</code></a
             >
-            — the endpoints every button on this page calls
+            — the endpoints every button on this page calls, each one a binding over the catalogue
           </li>
           <li>
             <a href="https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/blob/main/example/web/src/generated/client.ts"
