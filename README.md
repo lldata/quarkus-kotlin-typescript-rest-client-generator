@@ -67,11 +67,33 @@ The module-level `api` is for the browser, where the cookie is the credential.
 
 ## Using it
 
-**0. Get the artifacts.** Not on Maven Central yet, so build and install them:
+**0. Get the artifacts.** Not on Maven Central yet, so there are two ways in.
+
+*On a developer machine*, install into `~/.m2` and add `mavenLocal()` to the consuming build:
 
 ```bash
 ./gradlew publishToMavenLocal
 ```
+
+*Anywhere a build runs without your `~/.m2`* — a CI runner, most obviously — take the jars from the
+[release](https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/releases), commit
+them to a `libs/` directory and depend on the files. **A `files(…)` dependency carries no
+transitives**, so the generator's own two come by hand:
+
+```kotlin
+repositories { mavenCentral() }
+
+dependencies {
+    implementation(files("libs/quarkus-kotlin-typescript-rest-client-annotations-1.0.0-alpha1.jar"))
+
+    testImplementation(files("libs/quarkus-kotlin-typescript-rest-client-generator-1.0.0-alpha1.jar"))
+    testImplementation("dk.lldata:typescriptpoet:2.0.0-alpha10")
+    testImplementation(kotlin("reflect"))
+}
+```
+
+Leave `kotlin("reflect")` out and every endpoint is dropped — the generator checks for it and says
+so, rather than reporting the symptom, which reads like a wrong directory.
 
 **1. Annotate the resources you want a client for.** Opt-in, so a new resource is outside the client
 until someone says so — the review point for "is this part of the contract the browser calls", which

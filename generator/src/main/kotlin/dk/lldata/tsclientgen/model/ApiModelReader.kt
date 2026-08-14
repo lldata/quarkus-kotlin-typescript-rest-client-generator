@@ -42,26 +42,66 @@ class ApiModelReader(
      */
     fun read(classesDir: File): ApiModel {
         require(classesDir.isDirectory) { "compiled classes not found at $classesDir — has the module been compiled?" }
+        requireKotlinReflect()
         val loader = javaClass.classLoader
-        val classes =
+        val classFiles =
             classesDir
                 .walkTopDown()
                 .filter { it.isFile && it.extension == "class" && !it.name.contains('$') }
-                .mapNotNull { classFile ->
-                    val binaryName =
-                        classFile
-                            .relativeTo(classesDir)
-                            .path
-                            .removeSuffix(".class")
-                            .replace(File.separatorChar, '.')
-                    runCatching { Class.forName(binaryName, false, loader) }.getOrNull()
-                }.toList()
+                .toList()
+        val classes =
+            classFiles.mapNotNull { classFile ->
+                val binaryName =
+                    classFile
+                        .relativeTo(classesDir)
+                        .path
+                        .removeSuffix(".class")
+                        .replace(File.separatorChar, '.')
+                runCatching { Class.forName(binaryName, false, loader) }.getOrNull()
+            }
         val model = read(classes)
         // An empty read is always a broken read — a wrong directory, or a jar walked as one. Every
         // rule built on this model reports "no violations" for an empty model, so it has to fail
         // here rather than downstream, where it looks like a clean bill of health.
-        check(model.endpoints.isNotEmpty()) { "no JAX-RS endpoints found under $classesDir — wrong directory?" }
+        //
+        // Which of the three it was matters, because the fixes are unrelated: an empty directory is
+        // a build-order problem, classes that will not load is a classpath problem, and classes
+        // that load but declare nothing is the wrong directory.
+        check(model.endpoints.isNotEmpty()) {
+            when {
+                classFiles.isEmpty() -> "no .class files under $classesDir — has the module been compiled?"
+                classes.isEmpty() ->
+                    "none of the ${classFiles.size} classes under $classesDir could be loaded. They are on disk but not " +
+                        "on this process's classpath, so the generator cannot read their annotations."
+                else ->
+                    "no JAX-RS endpoints among the ${classes.size} classes loaded from $classesDir. Either this is the " +
+                        "wrong directory, or none of them carries @Path."
+            }
+        }
         return model
+    }
+
+    /**
+     * Fails with the actual reason rather than the symptom.
+     *
+     * Without kotlin-reflect, [kotlinFunction] cannot link and every endpoint is silently dropped —
+     * which used to surface as "no JAX-RS endpoints found, wrong directory?" and send whoever hit it
+     * looking in the wrong place entirely.
+     *
+     * The way to get here is to depend on the generator with `files("libs/…jar")`, since a file
+     * dependency carries no transitives. That is a reasonable thing to do before this is published
+     * anywhere, so the message says what to add.
+     */
+    private fun requireKotlinReflect() {
+        runCatching { Class.forName("kotlin.reflect.jvm.ReflectJvmMapping", false, javaClass.classLoader) }
+            .onFailure {
+                error(
+                    "kotlin-reflect is not on the classpath, and the generator reads Kotlin signatures with it — " +
+                        "nullability, defaults and value classes are all in Kotlin metadata, not in the Java one. " +
+                        "If you are depending on the generator jar with `files(…)`, note that a file dependency brings " +
+                        "no transitives with it: add `kotlin(\"reflect\")` and `dk.lldata:typescriptpoet` yourself.",
+                )
+            }
     }
 
     /** The same read from classes you already have — what the tests use, and a REST-less entry point. */
