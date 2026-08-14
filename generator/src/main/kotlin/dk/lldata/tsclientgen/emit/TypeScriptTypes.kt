@@ -1,6 +1,8 @@
 package dk.lldata.tsclientgen.emit
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonValue
@@ -8,10 +10,12 @@ import dk.lldata.tsclientgen.GeneratorOptions
 import dk.lldata.tsclientgen.Scalar
 import dk.lldata.typescriptpoet.TypeName
 import kotlin.reflect.KClass
+import kotlin.reflect.KProperty1
 import kotlin.reflect.KType
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.full.starProjectedType
+import kotlin.reflect.jvm.javaField
 
 /**
  * How a Kotlin type on the wire is spelled in TypeScript, and which fields may be absent.
@@ -23,6 +27,11 @@ import kotlin.reflect.full.starProjectedType
 class TypeScriptTypes(
     private val options: GeneratorOptions,
 ) {
+    private companion object {
+        /** Matched by name: it lives in jackson-databind, which this library does not depend on. */
+        const val JSON_NAMING = "com.fasterxml.jackson.databind.annotation.JsonNaming"
+    }
+
     /** A DTO the emitter has to declare, as opposed to something with a TypeScript spelling already. */
     fun isDto(type: KType): Boolean {
         val klass = type.classifier as? KClass<*> ?: return false
@@ -260,6 +269,75 @@ class TypeScriptTypes(
         for (root in roots) visit(root)
         return Reachable(ordered.toList(), scalars.values.toList())
     }
+
+    /**
+     * What the property is called **on the wire**, which is not always what Kotlin calls it.
+     *
+     * `@JsonProperty("display_name")` renames a field, and emitting the Kotlin name instead
+     * produces a client that compiles, reads `undefined` and fails nowhere — the exact shape of
+     * failure this generator exists to prevent.
+     *
+     * Looked for in all four places the annotation can land, because where it ends up depends on
+     * how the class is written rather than on what its author meant: Kotlin puts an untargeted
+     * annotation on the constructor *parameter* when the annotation allows one, and on the backing
+     * field or the getter when a use-site target says so.
+     */
+    fun wireName(
+        declaring: KClass<*>,
+        property: KProperty1<*, *>,
+    ): String {
+        val declared =
+            jacksonAnnotations(declaring, property)
+                .filterIsInstance<JsonProperty>()
+                .firstOrNull()
+                ?.value
+        // `@JsonProperty` with no value is "keep the name" rather than "rename to nothing".
+        return declared?.takeIf { it.isNotEmpty() } ?: property.name
+    }
+
+    /**
+     * True when Jackson leaves the property out of the JSON entirely.
+     *
+     * Declaring it anyway is the same failure as the wrong name, one step further along: the client
+     * gets a field that no payload ever carries and no call site can tell.
+     */
+    fun isIgnored(
+        declaring: KClass<*>,
+        property: KProperty1<*, *>,
+    ): Boolean = jacksonAnnotations(declaring, property).any { it is JsonIgnore && it.value }
+
+    /**
+     * Refuses a naming strategy rather than emitting names it has not applied.
+     *
+     * `@JsonNaming(SnakeCaseStrategy::class)` renames every property at once, and it lives in
+     * jackson-databind, which this library deliberately does not depend on — so the strategy cannot
+     * be run, only detected. Emitting the Kotlin names in its presence would rename the whole
+     * payload behind the client's back.
+     */
+    fun refuseNamingStrategy(declaring: KClass<*>) {
+        val naming = declaring.java.annotations.firstOrNull { it.annotationClass.qualifiedName == JSON_NAMING }
+        check(naming == null) {
+            "${declaring.qualifiedName} carries @JsonNaming, which renames every property, and the generator cannot " +
+                "run the strategy — it reads annotations and does not depend on jackson-databind. Rename the " +
+                "properties with @JsonProperty, which it can read, or leave this type out of the client."
+        }
+    }
+
+    /** The annotation wherever Kotlin put it: parameter, property, backing field or getter. */
+    private fun jacksonAnnotations(
+        declaring: KClass<*>,
+        property: KProperty1<*, *>,
+    ): List<Annotation> =
+        declaring.primaryConstructor
+            ?.parameters
+            ?.firstOrNull { it.name == property.name }
+            ?.annotations
+            .orEmpty() + property.annotations +
+            property.javaField
+                ?.annotations
+                ?.toList()
+                .orEmpty() +
+            property.getter.annotations
 
     /**
      * True when a **response** field may be absent from the JSON.

@@ -1,9 +1,13 @@
 package dk.lldata.tsclientgen.fixture
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonValue
+import com.fasterxml.jackson.databind.PropertyNamingStrategies
+import com.fasterxml.jackson.databind.annotation.JsonNaming
 import dk.lldata.tsclientgen.TypeScriptValueObject
 import java.time.Instant
 
@@ -123,6 +127,32 @@ data class BorrowRefused(
 data class CommentResponse(
     val text: String,
     val replies: List<CommentResponse>,
+)
+
+/**
+ * The three ways the wire name differs from the Kotlin name — a rename on the constructor
+ * parameter, a rename with a use-site target, and a property that is not on the wire at all.
+ */
+data class RenamedResponse(
+    @JsonProperty("display_name") val displayName: String,
+    @field:JsonProperty("shelf_count") val shelfCount: Int,
+    @JsonIgnore val internalOnly: String,
+    val plain: String,
+)
+
+/** A rename on a request body reads the same way, and the optionality still keys off Kotlin. */
+data class RenamedRequest(
+    @JsonProperty("display_name") val displayName: String,
+    @JsonProperty("shelf_count") val shelfCount: Int = 1,
+)
+
+/**
+ * A naming strategy renames every property at once, and it cannot be read — only detected. Emitting
+ * the Kotlin names in its presence would rename the whole payload behind the client's back.
+ */
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy::class)
+data class NamingStrategyResponse(
+    val displayName: String,
 )
 
 /** A property whose type the generator has no rule for: not a payload, not a known scalar. */

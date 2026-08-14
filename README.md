@@ -37,6 +37,8 @@ What that buys, concretely:
 | `val tags: List<String> = emptyList()` in a request | `tags?: string[]` | A request reads the other way: whatever Kotlin can default, the caller may omit. |
 | `RestResponse<Void>` | `Promise<void>` | The status is the whole answer, and `response.json()` throws on an empty body. |
 | `@BeanParam BookQuery` | `{ q?: string; limit?: number }` | On the wire a bean param is not a thing; its fields are ordinary query parameters. |
+| `@JsonProperty("display_name")` | `display_name: string` | The wire's name, not Kotlin's. Emitting `displayName` gives a client that compiles and reads `undefined`. |
+| `@JsonIgnore val internal: String` | *omitted* | Jackson never writes it, so the client must not claim to have it. |
 | `@DefaultValue("50") limitRaw: Int` | `` /** Server default: `50`. */ limit?: number `` | Named as the wire names it, and the caller is told what omitting it means. |
 | `java.time.Instant` | `type Instant = string` | ISO-8601 on the wire, but named rather than inlined — the client can still say it is a timestamp. Inline or brand it instead: see [`Scalar`](generator/src/main/kotlin/dk/lldata/tsclientgen/Scalar.kt). |
 

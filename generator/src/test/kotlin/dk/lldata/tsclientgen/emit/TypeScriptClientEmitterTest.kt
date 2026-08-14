@@ -4,6 +4,8 @@ import dk.lldata.tsclientgen.GeneratorOptions
 import dk.lldata.tsclientgen.Scalar
 import dk.lldata.tsclientgen.fixture.ApiKeyedResource
 import dk.lldata.tsclientgen.fixture.LocaleResource
+import dk.lldata.tsclientgen.fixture.NamingStrategyResource
+import dk.lldata.tsclientgen.fixture.RenamedResource
 import dk.lldata.tsclientgen.fixtureModel
 import dk.lldata.tsclientgen.testOptions
 import io.kotest.matchers.string.shouldContain
@@ -238,6 +240,53 @@ class TypeScriptClientEmitterTest {
 
         emitted shouldContain "export type Locale = string;"
         emitted shouldContain "locale: Locale;"
+    }
+
+    /**
+     * `@JsonProperty` renames a field, and emitting the Kotlin name gives a client that compiles,
+     * reads `undefined` and fails nowhere. Read wherever Kotlin put the annotation: on the
+     * constructor parameter for an untargeted one, on the backing field for `@field:`.
+     */
+    @Test
+    fun `emits the name the wire uses, not the one Kotlin uses`() {
+        val emitted = TypeScriptClientEmitter(testOptions).emit(fixtureModel(RenamedResource::class.java).endpoints)
+
+        emitted shouldContain "display_name: string;"
+        emitted shouldContain "shelf_count: number;"
+        emitted shouldContain "plain: string;"
+        emitted shouldNotContain "displayName"
+        emitted shouldNotContain "shelfCount"
+    }
+
+    /** A field Jackson never writes is a field the client must not claim to have. */
+    @Test
+    fun `leaves out a property that is not on the wire`() {
+        val emitted = TypeScriptClientEmitter(testOptions).emit(fixtureModel(RenamedResource::class.java).endpoints)
+
+        emitted shouldNotContain "internalOnly"
+    }
+
+    /** The rename is the wire's business; optionality is still Kotlin's. */
+    @Test
+    fun `keys optionality off the Kotlin name while emitting the wire name`() {
+        val emitted = TypeScriptClientEmitter(testOptions).emit(fixtureModel(RenamedResource::class.java).endpoints)
+
+        emitted shouldContain "shelf_count?: number;"
+    }
+
+    /**
+     * A strategy renames everything at once and lives in jackson-databind, which the generator does
+     * not depend on — so it can be detected and not run. Emitting the Kotlin names anyway would
+     * rename the whole payload behind the client's back.
+     */
+    @Test
+    fun `refuses a naming strategy it cannot apply`() {
+        val naming = fixtureModel(NamingStrategyResource::class.java)
+
+        val failure = assertThrows<IllegalStateException> { emitter.emit(naming.endpoints) }
+
+        failure.message!! shouldContain "@JsonNaming"
+        failure.message!! shouldContain "@JsonProperty"
     }
 
     /** A payload that reaches itself used to recurse until the stack ran out. */

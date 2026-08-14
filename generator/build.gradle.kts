@@ -25,6 +25,9 @@ dependencies {
 
     testImplementation("jakarta.ws.rs:jakarta.ws.rs-api:3.1.0")
     testImplementation("com.fasterxml.jackson.core:jackson-annotations:2.17.0")
+    // Only so a fixture can carry `@JsonNaming`, which lives in databind. The library itself reads
+    // it by qualified name and depends on none of this.
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.17.0")
     // Only so the fixtures can declare `RestResponse<T>` and prove the wrapper is unwrapped by the
     // real class rather than by a stand-in with the same name.
     testImplementation("io.quarkus.resteasy.reactive:resteasy-reactive-common:3.38.0")

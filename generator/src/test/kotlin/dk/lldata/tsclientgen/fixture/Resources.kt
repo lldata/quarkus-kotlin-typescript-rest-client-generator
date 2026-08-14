@@ -86,6 +86,24 @@ class BooksResource {
 }
 
 @TypeScriptApi
+@Path("/api/renamed")
+class RenamedResource {
+    @GET
+    fun renamed(): RenamedResponse = TODO()
+
+    @POST
+    fun rename(body: RenamedRequest): RenamedResponse = TODO()
+}
+
+/** Only used by the test that asserts a naming strategy is refused. */
+@TypeScriptApi
+@Path("/api/naming")
+class NamingStrategyResource {
+    @GET
+    fun naming(): NamingStrategyResponse = TODO()
+}
+
+@TypeScriptApi
 @Path("/api/locale")
 class LocaleResource {
     @GET

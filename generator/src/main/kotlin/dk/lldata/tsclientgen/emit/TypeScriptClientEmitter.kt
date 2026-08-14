@@ -209,11 +209,18 @@ class TypeScriptClientEmitter(
         isRequest: Boolean,
         discriminator: Pair<String, String>?,
     ) = interfaze(dto.simpleName!!, Modifier.EXPORT) {
+        types.refuseNamingStrategy(dto)
         // Declaration order, not alphabetical: the Kotlin constructor is the readable order.
         val order = dto.primaryConstructorParameterNames()
-        for (member in dto.memberProperties.sortedBy { order.indexOf(it.name).takeIf { i -> i >= 0 } ?: Int.MAX_VALUE }) {
+        for (member in dto.memberProperties
+            .sortedBy { order.indexOf(it.name).takeIf { i -> i >= 0 } ?: Int.MAX_VALUE }
+            .filterNot { types.isIgnored(dto, it) }) {
+            // What the JSON calls it, which `@JsonProperty` can make different from what Kotlin
+            // calls it. The Kotlin name is still the right key for asking Kotlin questions — see
+            // `isOptionalRequestField` below, which looks the constructor parameter up by it.
+            val name = types.wireName(dto, member)
             val type =
-                if (member.name == discriminator?.first) {
+                if (name == discriminator?.first) {
                     // The variant fixes this to one literal, which is what makes the union
                     // narrowable: `if (result.outcome === "refused")` tells TypeScript which arm.
                     TypeName.literal(discriminator.second)
@@ -226,7 +233,7 @@ class TypeScriptClientEmitter(
                 } else {
                     types.isOptionalResponseField(dto, member.returnType)
                 }
-            if (isOptional) optional(member.name, type) else property(member.name, type)
+            if (isOptional) optional(name, type) else property(name, type)
         }
     }
 
