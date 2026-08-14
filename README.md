@@ -187,7 +187,7 @@ Declarations are built with [lldata/typescriptpoet](https://github.com/lldata/ty
 fork of `outfoxx/typescriptpoet` — upstream stopped at 1.1.2 in 2021, and the fork adds a Kotlin DSL
 and the object-literal getter a lazy call tree is made of.
 
-It is unpublished, so `libs/typescriptpoet-2.0.0-alpha5.jar` is vendored and committed, and the
+It is unpublished, so `libs/typescriptpoet-2.0.0-alpha6.jar` is vendored and committed, and the
 published POM cannot declare it. **This is why the artifact is `0.1.0-SNAPSHOT` and not released**;
 publishing the fork is the prerequisite. Upgrading means dropping in a new jar and bumping the
 filename in `generator/build.gradle.kts`.

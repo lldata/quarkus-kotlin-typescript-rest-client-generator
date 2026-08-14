@@ -5,23 +5,30 @@ import dk.lldata.tsclientgen.model.ApiModelReader
 import dk.lldata.tsclientgen.model.Endpoint
 import dk.lldata.tsclientgen.model.Param
 import dk.lldata.tsclientgen.model.ParamSource
+import dk.lldata.typescriptpoet.CodeBlock
 import dk.lldata.typescriptpoet.FileSpec
 import dk.lldata.typescriptpoet.Modifier
 import dk.lldata.typescriptpoet.ObjectLiteral
 import dk.lldata.typescriptpoet.TypeName
+import dk.lldata.typescriptpoet.dsl.argument
 import dk.lldata.typescriptpoet.dsl.arrow
 import dk.lldata.typescriptpoet.dsl.body
+import dk.lldata.typescriptpoet.dsl.call
+import dk.lldata.typescriptpoet.dsl.expression
 import dk.lldata.typescriptpoet.dsl.file
 import dk.lldata.typescriptpoet.dsl.function
 import dk.lldata.typescriptpoet.dsl.getter
 import dk.lldata.typescriptpoet.dsl.interfaze
+import dk.lldata.typescriptpoet.dsl.member
 import dk.lldata.typescriptpoet.dsl.obj
 import dk.lldata.typescriptpoet.dsl.optional
+import dk.lldata.typescriptpoet.dsl.optionalMember
 import dk.lldata.typescriptpoet.dsl.parameter
 import dk.lldata.typescriptpoet.dsl.property
 import dk.lldata.typescriptpoet.dsl.returns
 import dk.lldata.typescriptpoet.dsl.shorthand
 import dk.lldata.typescriptpoet.dsl.type
+import dk.lldata.typescriptpoet.dsl.typeArgument
 import kotlin.reflect.KClass
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
@@ -163,22 +170,29 @@ class TypeScriptClientEmitter(
             val prefix = if (isRoot) options.rootPath else "\${path}"
             for ((segment, child) in node.literals) {
                 val childPath = if (isRoot) "\"$prefix/$segment\"" else "`$prefix/$segment`"
-                getter(ApiNode.camelCase(segment), "return %L(%L, config)", child.factoryName(), childPath)
+                getter(ApiNode.camelCase(segment), "return %L", childCall(child, childPath))
             }
             node.dynamic?.let { (param, child) ->
                 val name = ApiNode.camelCase(param.wireName ?: param.name)
                 val childPath = "`$prefix/\${encodeURIComponent(String($name))}`"
                 property(
                     name,
-                    "%L",
                     arrow(name) {
                         parameter(name, types.typeOf(param.type))
-                        body { statement("return %L(%L, config)", child.factoryName(), childPath) }
+                        expression(childCall(child, childPath))
                     },
                 )
             }
             for ((verb, endpoint) in node.operations) operation(verb, endpoint, isRoot)
         }
+
+    private fun childCall(
+        child: ApiNode,
+        childPath: String,
+    ) = call(child.factoryName()) {
+        argument("%L", childPath)
+        argument("config")
+    }
 
     /**
      * `.get(args, options)` / `.post(body, options)`. Query parameters are named as the wire names
@@ -208,7 +222,6 @@ class TypeScriptClientEmitter(
                 if (endpoint.queryParams.isNotEmpty()) {
                     property(
                         "query",
-                        "%L",
                         obj {
                             for (param in endpoint.queryParams) {
                                 property(param.wireName!!, "%L", "$argsAccess.${param.wireName}")
@@ -219,38 +232,50 @@ class TypeScriptClientEmitter(
                 if (endpoint.body != null) shorthand("body")
             }
 
-        val leaf =
+        property(
+            verb.lowercase(),
             arrow(verb.lowercase()) {
                 endpoint.body?.let { parameter("body", types.typeOf(it.type)) }
                 if (endpoint.queryParams.isNotEmpty()) {
                     parameter("args", argsObjectType(endpoint), optional = allOptional)
                 }
                 parameter("options", requestOptions, optional = true)
-                returns(TypeName.PROMISE.parameterized(returns))
-                // `config` is its own argument, not a field merged into `options`: the token belongs
-                // to the client instance, and a per-call one would be a second way in that this would
-                // then have to silently override.
-                body { statement("return %T<%T>(%L, config, options)", apiRequest, returns, request) }
-            }
-        property(verb.lowercase(), "%L", leaf)
+                returns(TypeName.promiseType(returns))
+                // A call built as a list rather than spelled as a format string: the writer can only
+                // break where it can see an argument boundary, and `%T<%T>(%L, config, options)` has
+                // none in it.
+                expression(
+                    call(apiRequest) {
+                        typeArgument(returns)
+                        argument(request)
+                        // `config` is its own argument, not a field merged into `options`: the token
+                        // belongs to the client instance, and a per-call one would be a second way
+                        // in that this would then have to silently override.
+                        argument("config")
+                        argument("options")
+                    },
+                )
+            },
+        )
     }
 
     /**
      * The inline `{ limit?: number; … }` a call takes its query parameters as.
      *
-     * Spelled rather than built, because each member may carry a doc comment naming the server's
-     * default and Poet has no inline-object-type builder that keeps one.
+     * An anonymous type rather than an interface, because each member may carry a doc comment
+     * naming the server's default and there is nothing else for the shape to be called.
      */
-    private fun argsObjectType(endpoint: Endpoint): TypeName {
-        val members =
-            endpoint.queryParams.joinToString("; ") {
+    private fun argsObjectType(endpoint: Endpoint): TypeName =
+        TypeName.anonymousType(
+            endpoint.queryParams.map { param ->
+                val name = param.wireName ?: param.name
+                val type = types.typeOf(param.type)
                 // What omitting it means, where the resource says so. Optionality alone reads as
                 // "the server copes"; the literal says which answer the caller actually gets.
-                val default = it.defaultValue?.let { literal -> "/** Server default: `$literal`. */ " } ?: ""
-                "$default${it.wireName ?: it.name}${if (it.optional) "?" else ""}: ${types.render(it.type)}"
-            }
-        return TypeName.implicit("{ $members }")
-    }
+                val tsDoc = param.defaultValue?.let { CodeBlock.of("Server default: `%L`.", it) } ?: CodeBlock.empty()
+                if (param.optional) optionalMember(name, type, tsDoc) else member(name, type, tsDoc)
+            },
+        )
 
     private fun KClass<*>.primaryConstructorParameterNames(): List<String> =
         primaryConstructor

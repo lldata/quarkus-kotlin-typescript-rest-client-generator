@@ -6,9 +6,7 @@ export type ShelfSlug = string;
 
 export interface ShelfDto {
   slug: ShelfSlug;
-
   name: string;
-
   bookCount: number;
 }
 
@@ -22,33 +20,23 @@ export type Isbn = string;
 
 export interface BookDto {
   isbn: Isbn;
-
   title: string;
-
   author: string;
-
   condition: Condition;
-
   tags: string[];
-
   addedAt: string;
-
   borrowedBy: string | null;
 }
 
 export interface BookListResponse {
   books: BookDto[];
-
   total: number;
-
   tagCounts: Record<string, number>;
 }
 
 export interface BookDetailResponse {
   book: BookDto;
-
   note?: string | null;
-
   alsoOnThisShelf: BookDto[];
 }
 
@@ -56,17 +44,13 @@ export type BorrowOutcome = "accepted" | "refused";
 
 export interface BorrowAccepted {
   borrower: string;
-
   dueAt: string;
-
   outcome: "accepted";
 }
 
 export interface BorrowRefused {
   reason: string;
-
   borrowedBy: string;
-
   outcome: "refused";
 }
 
@@ -74,19 +58,14 @@ export type BorrowResponse = BorrowAccepted | BorrowRefused;
 
 export interface AddBookRequest {
   isbn: Isbn;
-
   title: string;
-
   author: string;
-
   condition?: Condition;
-
   tags?: string[];
 }
 
 export interface BorrowRequest {
   borrower: string;
-
   days?: number;
 }
 
@@ -97,25 +76,31 @@ function shelvesShelfBooksIsbnBorrowNode(path: string, config: ApiConfig) {
     post: (
       body: BorrowRequest,
       options?: RequestOptions,
-    ): Promise<BorrowResponse> => {
-      return apiRequest<BorrowResponse>({ method: "POST", path, body }, config, options);
-    },
+    ): Promise<BorrowResponse> => apiRequest<BorrowResponse>(
+      { method: "POST", path, body },
+      config,
+      options,
+    ),
   };
 }
 
 function shelvesShelfBooksIsbnRemoveNode(path: string, config: ApiConfig) {
   return {
-    post: (options?: RequestOptions): Promise<void> => {
-      return apiRequest<void>({ method: "POST", path }, config, options);
-    },
+    post: (options?: RequestOptions): Promise<void> => apiRequest<void>(
+      { method: "POST", path },
+      config,
+      options,
+    ),
   };
 }
 
 function shelvesShelfBooksIsbnReturnNode(path: string, config: ApiConfig) {
   return {
-    post: (options?: RequestOptions): Promise<BookDetailResponse> => {
-      return apiRequest<BookDetailResponse>({ method: "POST", path }, config, options);
-    },
+    post: (options?: RequestOptions): Promise<BookDetailResponse> => apiRequest<BookDetailResponse>(
+      { method: "POST", path },
+      config,
+      options,
+    ),
   };
 }
 
@@ -130,22 +115,34 @@ function shelvesShelfBooksIsbnNode(path: string, config: ApiConfig) {
     get return() {
       return shelvesShelfBooksIsbnReturnNode(`${path}/return`, config);
     },
-    get: (options?: RequestOptions): Promise<BookDetailResponse> => {
-      return apiRequest<BookDetailResponse>({ method: "GET", path }, config, options);
-    },
+    get: (options?: RequestOptions): Promise<BookDetailResponse> => apiRequest<BookDetailResponse>(
+      { method: "GET", path },
+      config,
+      options,
+    ),
   };
 }
 
 function shelvesShelfBooksNode(path: string, config: ApiConfig) {
   return {
-    isbn: (isbn: string) => {
-      return shelvesShelfBooksIsbnNode(`${path}/${encodeURIComponent(String(isbn))}`, config);
-    },
+    isbn: (isbn: string) => shelvesShelfBooksIsbnNode(
+      `${path}/${encodeURIComponent(String(isbn))}`,
+      config,
+    ),
     get: (
-      args?: { q?: string; condition?: Condition; /** Server default: `TITLE`. */ sort?: SortField; /** Server default: `50`. */ limit?: number },
+      args?: {
+        q?: string;
+        condition?: Condition;
+        /**
+         * Server default: `TITLE`. */
+        sort?: SortField;
+        /**
+         * Server default: `50`. */
+        limit?: number;
+      },
       options?: RequestOptions,
-    ): Promise<BookListResponse> => {
-      return apiRequest<BookListResponse>({
+    ): Promise<BookListResponse> => apiRequest<BookListResponse>(
+      {
         method: "GET",
         path,
         query: {
@@ -154,14 +151,18 @@ function shelvesShelfBooksNode(path: string, config: ApiConfig) {
           sort: args?.sort,
           limit: args?.limit,
         },
-      }, config, options);
-    },
+      },
+      config,
+      options,
+    ),
     post: (
       body: AddBookRequest,
       options?: RequestOptions,
-    ): Promise<BookDetailResponse> => {
-      return apiRequest<BookDetailResponse>({ method: "POST", path, body }, config, options);
-    },
+    ): Promise<BookDetailResponse> => apiRequest<BookDetailResponse>(
+      { method: "POST", path, body },
+      config,
+      options,
+    ),
   };
 }
 
@@ -175,12 +176,15 @@ function shelvesShelfNode(path: string, config: ApiConfig) {
 
 function shelvesNode(path: string, config: ApiConfig) {
   return {
-    shelf: (shelf: string) => {
-      return shelvesShelfNode(`${path}/${encodeURIComponent(String(shelf))}`, config);
-    },
-    get: (options?: RequestOptions): Promise<ShelvesResponse> => {
-      return apiRequest<ShelvesResponse>({ method: "GET", path }, config, options);
-    },
+    shelf: (shelf: string) => shelvesShelfNode(
+      `${path}/${encodeURIComponent(String(shelf))}`,
+      config,
+    ),
+    get: (options?: RequestOptions): Promise<ShelvesResponse> => apiRequest<ShelvesResponse>(
+      { method: "GET", path },
+      config,
+      options,
+    ),
   };
 }
 

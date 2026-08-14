@@ -93,10 +93,16 @@ class TypeScriptClientEmitterTest {
         emitted shouldContain "export type SortField = \"TITLE\" | \"AUTHOR\";"
     }
 
-    /** Optionality alone reads as "the server copes"; the literal says which answer you get. */
+    /**
+     * Optionality alone reads as "the server copes"; the literal says which answer you get. The
+     * comment is the whole reason the args object is an anonymous type rather than an interface.
+     */
     @Test
     fun `says what omitting a defaulted query param means`() {
-        emit("BooksResource.list") shouldContain "/** Server default: `20`. */ limit?: number"
+        val emitted = emit("BooksResource.list")
+
+        emitted shouldContain "Server default: `20`."
+        emitted shouldContain "limit?: number;"
     }
 
     /** Jackson writes the scalar, so the client compares against a string, not an object. */
@@ -182,8 +188,12 @@ class TypeScriptClientEmitterTest {
     fun `every call carries the client config`() {
         val emitted = emit("BooksResource.detail")
 
-        // Layout is the writer's business, so assert the arguments rather than the whitespace.
-        emitted shouldContain ", config, options)"
+        // Layout is the writer's business — it breaks the argument list on width — so assert the
+        // arguments rather than the whitespace between them.
+        emitted shouldContain "apiRequest<BookDetailResponse>("
+        emitted.collapseWhitespace() shouldContain "config, options,"
         emitted shouldNotContain "token: config.token"
     }
+
+    private fun String.collapseWhitespace() = replace(Regex("\\s+"), " ")
 }
