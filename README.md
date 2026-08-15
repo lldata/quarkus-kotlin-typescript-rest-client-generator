@@ -91,9 +91,9 @@ transitives**, so the generator's own two come by hand:
 repositories { mavenCentral() }
 
 dependencies {
-    implementation(files("libs/quarkus-kotlin-typescript-rest-client-annotations-1.0.0-alpha3.jar"))
+    implementation(files("libs/quarkus-kotlin-typescript-rest-client-annotations-1.0.0-alpha4.jar"))
 
-    testImplementation(files("libs/quarkus-kotlin-typescript-rest-client-generator-1.0.0-alpha3.jar"))
+    testImplementation(files("libs/quarkus-kotlin-typescript-rest-client-generator-1.0.0-alpha4.jar"))
     testImplementation("dk.lldata:typescriptpoet:2.0.0-alpha10")
     testImplementation(kotlin("reflect"))
 }
@@ -113,8 +113,8 @@ repositories {
 }
 
 dependencies {
-    implementation("dk.lldata:quarkus-kotlin-typescript-rest-client-annotations:1.0.0-alpha3")
-    testImplementation("dk.lldata:quarkus-kotlin-typescript-rest-client-generator:1.0.0-alpha3")
+    implementation("dk.lldata:quarkus-kotlin-typescript-rest-client-annotations:1.0.0-alpha4")
+    testImplementation("dk.lldata:quarkus-kotlin-typescript-rest-client-generator:1.0.0-alpha4")
 }
 ```
 
