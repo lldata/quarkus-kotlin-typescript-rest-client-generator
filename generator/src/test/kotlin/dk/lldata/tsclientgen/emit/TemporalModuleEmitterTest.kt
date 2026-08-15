@@ -78,7 +78,7 @@ class TemporalModuleEmitterTest {
     /** Where the requirement is discovered is the file that fails, so it says so itself. */
     @Test
     fun `says in the file what it needs`() {
-        emit(ScalarStyle.Named)!! shouldContain "declared by TypeScript's own lib from 7.0"
+        emit(ScalarStyle.Named)!! shouldContain "TypeScript's own lib declares it from"
     }
 
     /** A scalar with no Temporal equivalent contributes nothing, and no file is a fine answer. */

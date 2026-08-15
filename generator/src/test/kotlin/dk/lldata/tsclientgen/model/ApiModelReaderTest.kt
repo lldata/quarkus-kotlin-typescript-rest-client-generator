@@ -56,7 +56,7 @@ class ApiModelReaderTest {
     fun `flattens a bean param into its wire parameters`() {
         val list = endpoint("BooksResource.list")
 
-        list.queryParams.map { it.wireName } shouldContainExactly listOf("q", "sort", "movedFrom", "limit")
+        list.queryParams.map { it.wireName } shouldContainExactly listOf("q", "sort", "movedFrom", "limit", "page-size")
         list.params.none { it.source == ParamSource.BEAN } shouldBe true
         list.queryParams.first { it.wireName == "sort" }.type shouldBe typeOf<SortField>()
     }

@@ -32,6 +32,9 @@ class BookQuery(
     @QueryParam("limit")
     @DefaultValue("20")
     val limitRaw: Int = 20,
+    /** A wire name that is not a TypeScript identifier, which servers hand out routinely. */
+    @QueryParam("page-size")
+    val pageSize: Int? = null,
 )
 
 @TypeScriptApi

@@ -92,6 +92,21 @@ class TypeScriptClientEmitterTest {
     }
 
     /**
+     * `page-size` is an ordinary thing for a server to call a parameter and not an identifier, so
+     * it cannot be written bare — `{ page-size: number }` parses as a subtraction. Quoting the
+     * member and subscripting the access keeps the wire name, which is the only correct answer:
+     * camel-casing it would silently rename somebody else's parameter.
+     */
+    @Test
+    fun `quotes a query parameter whose wire name is not an identifier`() {
+        val emitted = emit("BooksResource.list")
+
+        emitted shouldContain "\"page-size\"?: number"
+        emitted shouldContain "\"page-size\": args?.[\"page-size\"]"
+        emitted shouldNotContain "pageSize"
+    }
+
+    /**
      * A type that only ever appears in a query string still has to be declared: the call signature
      * names it, and a name nothing declares is a file that does not compile.
      */

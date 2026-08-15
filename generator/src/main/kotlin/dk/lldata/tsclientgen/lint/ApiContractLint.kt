@@ -237,7 +237,7 @@ class ApiContractLint(
                 }
         val unusable =
             nodes
-                .flatMap { node -> node.literals.keys.map { ApiNode.camelCase(it) } + listOfNotNull(node.dynamic?.param?.wireName) }
+                .flatMap { node -> node.literals.keys.map { ApiNode.camelCase(it) } + listOfNotNull(node.argumentName()) }
                 .filterNot { it.matches(identifier) }
                 .map {
                     ApiContractViolation(
@@ -257,8 +257,32 @@ class ApiContractLint(
                         "is a reserved word and cannot be a function declaration.",
                     )
                 }
-        return duplicated + unusable + reserved
+        // A variable segment becomes the argument the caller passes it as, and a binding is where
+        // TypeScript's reserved words actually bite: `{ delete: … }` is a fine property, but
+        // `(delete: string) => …` does not parse. The member name is covered above; this is the
+        // parameter, which nothing else looks at.
+        val reservedArgument =
+            nodes
+                .mapNotNull { it.argumentName() }
+                .filter { it in TYPESCRIPT_RESERVED }
+                .map {
+                    ApiContractViolation(
+                        ApiContractRule.USABLE_PATH_SEGMENTS,
+                        it,
+                        "is a reserved word and cannot be the name of the argument it becomes.",
+                    )
+                }
+        return duplicated + unusable + reserved + reservedArgument
     }
+
+    /**
+     * What a node's variable segment is called in the source, or null if it has none.
+     *
+     * Camel-cased, because that is what the emitter writes: a path parameter named `page-size`
+     * becomes the argument `pageSize` and is perfectly fine. Judging it on the wire name would
+     * report a name that never reaches the file.
+     */
+    private fun ApiNode.argumentName(): String? = dynamic?.param?.let { ApiNode.camelCase(it.wireName ?: it.name) }
 
     /**
      * An enum whose `@JsonValue` differs from its constant name, used in a path or a query string,

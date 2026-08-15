@@ -16,6 +16,7 @@ import jakarta.ws.rs.DELETE
 import jakarta.ws.rs.GET
 import jakarta.ws.rs.POST
 import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
 import jakarta.ws.rs.QueryParam
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -48,6 +49,17 @@ private class BrokenResource {
     @Path("/unconvertible")
     fun unconvertible(
         @QueryParam("mood") mood: Mood,
+    ): BookListResponse = TODO()
+}
+
+/** A path parameter whose name is a reserved word, which only bites where it is bound. */
+@TypeScriptApi
+@Path("/api/reserved")
+private class ReservedArgumentResource {
+    @GET
+    @Path("/{delete}")
+    fun byName(
+        @PathParam("delete") delete: String,
     ): BookListResponse = TODO()
 }
 
@@ -207,6 +219,26 @@ class ApiContractLintTest {
         violations.filter { it.rule == ApiContractRule.GET_OR_POST_ONLY }.map { it.subject } shouldContainExactly
             listOf("DELETE /api/ops/cache")
         violations.none { it.subject == "OffSurfaceResource.dropCache" } shouldBe true
+    }
+
+    /**
+     * `{delete}` becomes the argument the caller passes, and a reserved word cannot be a binding.
+     *
+     * The member it hangs off is fine — `{ delete: … }` is an ordinary property — so nothing else
+     * in this rule sees it, and the emitted file would fail to parse rather than to type-check.
+     */
+    @Test
+    fun `catches a variable segment that cannot be the argument it becomes`() {
+        val lint =
+            ApiContractLint(
+                ApiModelReader(testOptions).read(listOf(ReservedArgumentResource::class.java)),
+                testOptions,
+            )
+
+        val reported = lint.violations().filter { it.rule == ApiContractRule.USABLE_PATH_SEGMENTS }
+
+        reported.single().subject shouldBe "delete"
+        reported.single().message shouldContain "cannot be the name of the argument"
     }
 
     private fun brokenLint() =

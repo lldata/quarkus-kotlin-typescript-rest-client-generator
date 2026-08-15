@@ -61,20 +61,26 @@ class TemporalModuleEmitter(
         val spec =
             file("client-temporal") {
                 addComment(options.header)
+                // Wrapped to the print width by hand: a comment is prose to the writer, which will
+                // not reflow it, so the line breaks here are the ones that reach the file.
                 addComment(
-                    "\nThis module names `Temporal`. It is declared by TypeScript's own lib from 7.0 " +
-                        "(with `lib: \"esnext\"`),\nand by nothing at all before that — the polyfills export it as " +
-                        "a module member rather than a global.\nOn an older TypeScript, regenerate with " +
-                        "`temporalImport` set to the polyfill and this file will import it.",
+                    """
+                    |
+                    |This module names `Temporal`. TypeScript's own lib declares it from
+                    |7.0 (with `lib: "esnext"`), and nothing declares it before that — the
+                    |polyfills export it as a module member and no global at all. On an
+                    |older TypeScript, regenerate with `temporalImport` set to the polyfill
+                    |and this file will import it.
+                    """.trimMargin(),
                 )
-                property("toTemporal", TypeName.implicit(toTemporalType(convertible)), Modifier.EXPORT, Modifier.CONST) {
+                property("toTemporal", toTemporalType(convertible, imported), Modifier.EXPORT, Modifier.CONST) {
                     initializer(
                         "%L",
                         obj {
                             for (scalar in convertible) {
                                 property(
                                     memberName(scalar),
-                                    arrow(memberName(scalar)) {
+                                    arrow {
                                         parameter("value", imported.getValue(scalar))
                                         returns(TypeName.implicit(scalar.temporal!!))
                                         if (temporal == null) {
@@ -88,14 +94,14 @@ class TemporalModuleEmitter(
                         },
                     )
                 }
-                property("fromTemporal", TypeName.implicit(fromTemporalType(convertible)), Modifier.EXPORT, Modifier.CONST) {
+                property("fromTemporal", fromTemporalType(convertible, imported), Modifier.EXPORT, Modifier.CONST) {
                     initializer(
                         "%L",
                         obj {
                             for (scalar in convertible) {
                                 property(
                                     memberName(scalar),
-                                    arrow(memberName(scalar)) {
+                                    arrow {
                                         parameter("value", TypeName.implicit(scalar.temporal!!))
                                         returns(imported.getValue(scalar))
                                         // A branded scalar has a companion, so the wire-bound
@@ -125,9 +131,51 @@ class TemporalModuleEmitter(
     /** `instant`, `localDate` — the alias, lowercased at the front, since it is a member now. */
     private fun memberName(scalar: Scalar): String = scalar.reference.replaceFirstChar { it.lowercase() }
 
-    private fun toTemporalType(scalars: List<Scalar>): String =
-        scalars.joinToString("; ", "{ ", " }") { "readonly ${memberName(it)}: (value: ${it.reference}) => ${it.temporal}" }
+    /**
+     * `Readonly<{ instant: (value: Instant) => Temporal.Instant; … }>`.
+     *
+     * Built as members and lambdas rather than joined into a string, so the writer can see where
+     * the type may break — a joined one is a single token to it, and a handful of scalars put this
+     * annotation past four hundred columns.
+     *
+     * `Readonly<…>` rather than a `readonly` on each member because an anonymous member cannot
+     * carry the modifier (lldata/typescriptpoet#16). The two are equivalent over a flat object
+     * type, and this one is a structure the writer understands.
+     */
+    private fun conversionTableType(
+        scalars: List<Scalar>,
+        parameter: (Scalar) -> TypeName,
+        result: (Scalar) -> TypeName,
+    ): TypeName =
+        TypeName.parameterizedType(
+            TypeName.standard("Readonly"),
+            TypeName.anonymousType(
+                scalars.map { scalar ->
+                    TypeName.anonymousMember(
+                        memberName(scalar),
+                        TypeName.lambda(mapOf("value" to parameter(scalar)), result(scalar)),
+                    )
+                },
+            ),
+        )
 
-    private fun fromTemporalType(scalars: List<Scalar>): String =
-        scalars.joinToString("; ", "{ ", " }") { "readonly ${memberName(it)}: (value: ${it.temporal}) => ${it.reference}" }
+    private fun toTemporalType(
+        scalars: List<Scalar>,
+        imported: Map<Scalar, TypeName>,
+    ): TypeName =
+        conversionTableType(
+            scalars,
+            parameter = { imported.getValue(it) },
+            result = { TypeName.implicit(it.temporal!!) },
+        )
+
+    private fun fromTemporalType(
+        scalars: List<Scalar>,
+        imported: Map<Scalar, TypeName>,
+    ): TypeName =
+        conversionTableType(
+            scalars,
+            parameter = { TypeName.implicit(it.temporal!!) },
+            result = { imported.getValue(it) },
+        )
 }

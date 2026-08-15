@@ -291,7 +291,7 @@ class TypeScriptClientEmitter(
                 val childPath = "`$prefix/\${encodeURIComponent(String($name))}`"
                 property(
                     name,
-                    arrow(name) {
+                    arrow {
                         parameter(name, types.typeOf(param.type))
                         expression(childCall(child, childPath))
                     },
@@ -338,7 +338,8 @@ class TypeScriptClientEmitter(
                         "query",
                         obj {
                             for (param in endpoint.queryParams) {
-                                property(param.wireName!!, "%L", "$argsAccess.${param.wireName}")
+                                val wire = param.wireName!!
+                                property(TypeScriptNames.member(wire), "%L", TypeScriptNames.access(argsAccess, wire))
                             }
                         },
                     )
@@ -348,7 +349,11 @@ class TypeScriptClientEmitter(
 
         property(
             verb.lowercase(),
-            arrow(verb.lowercase()) {
+            // The arrow is anonymous, so its builder name is a label and never reaches the output.
+            // Passing the verb through would be the tidier read, except that Poet validates the
+            // name as an identifier and `delete` is a reserved word — while `{ delete: … }` is a
+            // perfectly ordinary property. Naming it here would refuse a DELETE endpoint outright.
+            arrow {
                 endpoint.body?.let { parameter("body", types.typeOf(it.type)) }
                 if (endpoint.queryParams.isNotEmpty()) {
                     parameter("args", argsObjectType(endpoint), optional = allOptional)
@@ -382,7 +387,7 @@ class TypeScriptClientEmitter(
     private fun argsObjectType(endpoint: Endpoint): TypeName =
         TypeName.anonymousType(
             endpoint.queryParams.map { param ->
-                val name = param.wireName ?: param.name
+                val name = TypeScriptNames.member(param.wireName ?: param.name)
                 val type = types.typeOf(param.type)
                 // What omitting it means, where the resource says so. Optionality alone reads as
                 // "the server copes"; the literal says which answer the caller actually gets.
