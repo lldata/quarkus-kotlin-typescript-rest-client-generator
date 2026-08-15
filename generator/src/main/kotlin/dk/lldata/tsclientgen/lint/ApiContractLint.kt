@@ -3,6 +3,7 @@ package dk.lldata.tsclientgen.lint
 import dk.lldata.tsclientgen.GeneratorOptions
 import dk.lldata.tsclientgen.TypeScriptValueObject
 import dk.lldata.tsclientgen.emit.ApiNode
+import dk.lldata.tsclientgen.emit.TypeScriptClientEmitter
 import dk.lldata.tsclientgen.emit.TypeScriptTypes
 import dk.lldata.tsclientgen.model.ApiModel
 import dk.lldata.tsclientgen.model.ApiModelReader
@@ -51,6 +52,7 @@ class ApiContractLint(
             addAll(usablePathSegments())
             addAll(convertibleEnumParams())
             addAll(untypedPayloads())
+            addAll(shadowsAGlobal())
         }
 
     /** Throws with the whole list when anything is wrong. The one-liner for a test to call. */
@@ -285,6 +287,42 @@ class ApiContractLint(
     private fun ApiNode.argumentName(): String? = dynamic?.param?.let { ApiNode.camelCase(it.wireName ?: it.name) }
 
     /**
+     * An emitted name that is also a standard-library global breaks every file that imports it.
+     *
+     * The import wins for the whole importing file, so a payload named `Response` shadows the one
+     * `fetch` returns:
+     *
+     * ```ts
+     * import type { Response } from "./client.js";
+     * const real: Response = await fetch("/api");  // Type 'Response' is not assignable to 'Response'
+     * ```
+     *
+     * The diagnostic names the same type on both sides and separates them only by absolute path,
+     * so the reader's first guess is that the compiler is broken. It is worth a rule for that
+     * alone: the cost of the collision is not that it fails, but how it reads when it does.
+     *
+     * Every declaration the client exports is in scope, because they all land in one namespace —
+     * interfaces, enum aliases, value-class aliases, union aliases and scalar aliases alike. For a
+     * scalar the escape hatch is the options (`Scalar.named("Timestamp", "string")`); for a payload
+     * it is renaming the Kotlin, which is the better answer anyway.
+     */
+    private fun shadowsAGlobal(): List<ApiContractViolation> {
+        val reachable = types.reachable(TypeScriptClientEmitter.rootTypesOf(clientSurface))
+        val declared = reachable.dtos.mapNotNull { it.simpleName } + reachable.namedScalars.map { it.reference }
+        return declared
+            .distinct()
+            .filter { it in TYPESCRIPT_GLOBALS }
+            .map {
+                ApiContractViolation(
+                    ApiContractRule.SHADOWS_A_GLOBAL,
+                    it,
+                    "is exported by the client and is also a standard-library global, which it shadows in every " +
+                        "file that imports it. Rename it.",
+                )
+            }
+    }
+
+    /**
      * An enum whose `@JsonValue` differs from its constant name, used in a path or a query string,
      * needs a static `fromString`.
      *
@@ -363,7 +401,7 @@ class ApiContractLint(
         return types.reachableDtos(listOf(responseType))
     }
 
-    private companion object {
+    internal companion object {
         /** Enough of the reserved set to catch a plausible path segment. */
         val TYPESCRIPT_RESERVED =
             setOf(
@@ -406,6 +444,81 @@ class ApiContractLint(
                 "with",
                 "yield",
             )
+
+        /**
+         * Globals an emitted name would shadow, curated rather than exhaustive.
+         *
+         * `lib.dom.d.ts` declares hundreds of names, and checking them all would flag `Text` in a
+         * project that never touches the DOM — a false positive on a perfectly good domain noun.
+         * What is here instead: the globals that are also ordinary things to call a payload. A
+         * project can filter the whole rule; a project that wants a longer list is better served
+         * by its own ESLint than by this one guessing.
+         */
+        val TYPESCRIPT_GLOBALS =
+            setOf(
+                // Values in the ES library that read as domain nouns.
+                "Array",
+                "Boolean",
+                "Date",
+                "Error",
+                "Function",
+                "Map",
+                "Number",
+                "Object",
+                "Promise",
+                "Proxy",
+                "Range",
+                "Set",
+                "String",
+                "Symbol",
+                "WeakMap",
+                "WeakSet",
+                // The web platform. `Response` and `Request` are the ones that bite, because the
+                // file importing the client is usually the file calling `fetch`.
+                "Attr",
+                "Blob",
+                "Cache",
+                "Comment",
+                "Credential",
+                "Document",
+                "Element",
+                "Event",
+                "File",
+                "FormData",
+                "Headers",
+                "History",
+                "Image",
+                "Location",
+                "Navigator",
+                "Node",
+                "Notification",
+                "Option",
+                "Report",
+                "Request",
+                "Response",
+                "Screen",
+                "Selection",
+                "Storage",
+                "Text",
+                "Touch",
+                "URL",
+                "Window",
+                "Worker",
+                // TypeScript's own global type namespace. `Record` is the trap: it is an ordinary
+                // word for a payload, and the generated client uses `Record` in its own runtime.
+                "Awaited",
+                "Exclude",
+                "Extract",
+                "NonNullable",
+                "Omit",
+                "Parameters",
+                "Partial",
+                "Pick",
+                "Readonly",
+                "Record",
+                "Required",
+                "ReturnType",
+            )
     }
 }
 
@@ -419,6 +532,7 @@ enum class ApiContractRule {
     USABLE_PATH_SEGMENTS,
     ENUM_QUERY_PARAM_CONVERTIBLE,
     UNTYPED_PAYLOAD,
+    SHADOWS_A_GLOBAL,
 }
 
 data class ApiContractViolation(

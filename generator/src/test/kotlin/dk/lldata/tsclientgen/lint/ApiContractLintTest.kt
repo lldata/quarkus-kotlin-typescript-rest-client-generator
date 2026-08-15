@@ -3,6 +3,8 @@ package dk.lldata.tsclientgen.lint
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonValue
+import dk.lldata.tsclientgen.GeneratorOptions
+import dk.lldata.tsclientgen.ScalarStyle
 import dk.lldata.tsclientgen.TypeScriptApi
 import dk.lldata.tsclientgen.fixture.BookListResponse
 import dk.lldata.tsclientgen.fixtureModel
@@ -10,6 +12,7 @@ import dk.lldata.tsclientgen.model.ApiModelReader
 import dk.lldata.tsclientgen.testOptions
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import jakarta.ws.rs.DELETE
@@ -61,6 +64,34 @@ private class ReservedArgumentResource {
     fun byName(
         @PathParam("delete") delete: String,
     ): BookListResponse = TODO()
+}
+
+/**
+ * Ordinary domain nouns that are all globals: a payload, an enum, and a value object.
+ *
+ * Off the `*Response` naming too, on purpose — the two rules are independent and a name can break
+ * both, which is worth seeing reported as two things rather than one.
+ */
+@TypeScriptApi
+@Path("/api/shadowing")
+private class ShadowingResource {
+    @GET
+    @Path("/where")
+    fun where(): Location = TODO()
+}
+
+private data class Location(
+    val document: Document,
+    val kind: Event,
+)
+
+private data class Document(
+    val text: String,
+)
+
+private enum class Event {
+    ARRIVED,
+    LEFT,
 }
 
 private enum class Mood(
@@ -239,6 +270,50 @@ class ApiContractLintTest {
 
         reported.single().subject shouldBe "delete"
         reported.single().message shouldContain "cannot be the name of the argument"
+    }
+
+    /**
+     * The import wins for the importing file, so the collision is not the client's problem — it is
+     * every consumer file's, with a diagnostic naming the same type on both sides.
+     */
+    @Test
+    fun `catches an emitted name that shadows a standard-library global`() {
+        val lint =
+            ApiContractLint(
+                ApiModelReader(brokenOptions).read(listOf(ShadowingResource::class.java)),
+                brokenOptions,
+            )
+
+        val reported = lint.violations().filter { it.rule == ApiContractRule.SHADOWS_A_GLOBAL }
+
+        reported.map { it.subject } shouldContainExactlyInAnyOrder listOf("Location", "Document", "Event")
+        reported.first().message shouldContain "shadows"
+    }
+
+    /** A project sure it never imports the DOM can drop the rule, like any other. */
+    @Test
+    fun `the shadowing rule can be filtered like any other`() {
+        val lint =
+            ApiContractLint(
+                ApiModelReader(brokenOptions).read(listOf(ShadowingResource::class.java)),
+                brokenOptions,
+            )
+
+        lint.check(ApiContractRule.entries.toSet() - ApiContractRule.SHADOWS_A_GLOBAL - ApiContractRule.RESPONSE_NAMING)
+    }
+
+    /**
+     * The shipped scalar table currently avoids every global, which the issue that asked for this
+     * rule pointed out is luck: `java.net.URI` is aliased `URI`, and `URL` would have collided.
+     * Asserted here so the next scalar added has to be a deliberate choice.
+     */
+    @Test
+    fun `no scalar the generator ships names a global`() {
+        for (style in ScalarStyle.entries) {
+            val aliases = GeneratorOptions.scalars(style).values.map { it.reference }
+
+            aliases.filter { it in ApiContractLint.TYPESCRIPT_GLOBALS }.shouldBeEmpty()
+        }
     }
 
     private fun brokenLint() =

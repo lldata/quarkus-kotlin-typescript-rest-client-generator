@@ -156,6 +156,24 @@ project has adopted.
 | `USABLE_PATH_SEGMENTS` | A segment that is not a usable member name, or two nodes with one factory name. |
 | `ENUM_QUERY_PARAM_CONVERTIBLE` | The trap below. |
 | `UNTYPED_PAYLOAD` | An endpoint the generator cannot describe — see *Untyped payloads*. Reported for the whole surface at once, whatever the policy. |
+| `SHADOWS_A_GLOBAL` | An exported name that is also a standard-library global — the trap below. |
+
+**The shadowing trap.** A Kotlin class named `Location`, `Event`, `Record` or `Response` is an
+ordinary domain noun and also a global. Exported from the client, the import wins for the whole
+importing file:
+
+```ts
+import type { Response } from "./client.js";
+const real: Response = await fetch("/api"); // the client's Response, not the platform's
+return real.text();                         // TS2339: Property 'text' does not exist on type 'Response'
+```
+
+The diagnostic names the same type on both sides and separates them only by absolute path, so the
+first guess is that the compiler is broken. Every exported declaration is checked — interfaces,
+enum aliases, value-class aliases, union aliases and scalar aliases all share one namespace. The
+list of globals is curated rather than exhaustive, so that `Text` is not flagged in a project that
+never touches the DOM; filter the rule out if yours is one of those. For a scalar the escape hatch
+is `Scalar.named("Timestamp", "string")`, and for a payload it is renaming the Kotlin.
 
 **The `@JsonValue` trap.** `@JsonValue` governs the JSON body and nothing else. A query parameter is
 converted by JAX-RS, which uses `valueOf` — so a client sending `?condition=worn` (what Jackson
