@@ -178,6 +178,24 @@ class ApiContractLintTest {
     }
 
     /**
+     * The emitter refuses one at a time, which is no way to learn that a whole surface is like
+     * this. The lint reports the set, whatever the policy is set to.
+     */
+    @Test
+    fun `reports every endpoint it could not describe, at once`() {
+        val untyped =
+            ApiContractLint(
+                ApiModelReader(testOptions).read(listOf(dk.lldata.tsclientgen.fixture.UntypedResponseResource::class.java)),
+                testOptions.copy(untypedPayloads = dk.lldata.tsclientgen.UntypedPolicy.Ignore),
+            )
+
+        val reported = untyped.violations().filter { it.rule == ApiContractRule.UNTYPED_PAYLOAD }
+
+        reported.single().subject shouldBe "UntypedResponseResource.untyped"
+        reported.single().message shouldContain "jakarta.ws.rs.core.Response"
+    }
+
+    /**
      * The verb rule reads every endpoint; the naming rules read only the client surface. An
      * off-surface resource returning a nested, badly named type is caught by the first and by
      * neither of the others.

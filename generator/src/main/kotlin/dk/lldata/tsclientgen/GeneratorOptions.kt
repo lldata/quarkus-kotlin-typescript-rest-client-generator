@@ -62,6 +62,16 @@ data class GeneratorOptions(
      * `@JvmInline value class` gets — see [Scalar].
      */
     val scalars: Map<String, Scalar> = DEFAULT_SCALARS,
+    /**
+     * What to do about an endpoint the generator cannot describe — see [UntypedPolicy]. Refusing by
+     * default, because a generated client is worth having only while its types are true.
+     */
+    val untypedPayloads: UntypedPolicy = UntypedPolicy.Fail,
+    /**
+     * Where [UntypedPolicy.Warn] reports to. Standard error by default, which is where a Gradle
+     * `JavaExec` puts it in front of whoever ran the task.
+     */
+    val onWarning: (String) -> Unit = { System.err.println("tsclientgen: $it") },
 ) {
     init {
         require(dtoPackages.isNotEmpty()) {

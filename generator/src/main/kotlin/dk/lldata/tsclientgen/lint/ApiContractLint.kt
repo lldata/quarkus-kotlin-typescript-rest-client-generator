@@ -50,6 +50,7 @@ class ApiContractLint(
             addAll(getOrPostOnly())
             addAll(usablePathSegments())
             addAll(convertibleEnumParams())
+            addAll(untypedPayloads())
         }
 
     /** Throws with the whole list when anything is wrong. The one-liner for a test to call. */
@@ -296,6 +297,29 @@ class ApiContractLint(
                 it.parameterTypes[0] == String::class.java
         }
 
+    /**
+     * Endpoints the generator cannot describe: a `jakarta.ws.rs.core.Response`, which holds a body
+     * without declaring it, or a bare `Any`, which reaches the client as `unknown`.
+     *
+     * The emitter refuses one at a time, which is no way to learn that fifty endpoints are like
+     * this — and a plain JAX-RS surface can easily have fifty, since `Response` is the idiomatic
+     * return there. This reports the set, so the size of the job is visible before anyone starts.
+     *
+     * Reported whatever [GeneratorOptions.untypedPayloads] is set to. The policy governs whether
+     * generation stops; this is the question "what could not be described", which has the same
+     * answer either way.
+     */
+    private fun untypedPayloads(): List<ApiContractViolation> =
+        clientSurface
+            .flatMap { endpoint ->
+                val body = endpoint.body?.type?.let { types.untypedPayload(it) }
+                val response = types.untypedPayload(endpoint.responseType)
+                listOfNotNull(
+                    response?.let { endpoint to it },
+                    body?.let { endpoint to "Its request body is untyped. $it" },
+                )
+            }.map { (endpoint, reason) -> ApiContractViolation(ApiContractRule.UNTYPED_PAYLOAD, endpoint.id(), reason) }
+
     private fun unions(): List<KClass<*>> =
         clientSurface
             .flatMap { it.responseDtos() }
@@ -370,6 +394,7 @@ enum class ApiContractRule {
     GET_OR_POST_ONLY,
     USABLE_PATH_SEGMENTS,
     ENUM_QUERY_PARAM_CONVERTIBLE,
+    UNTYPED_PAYLOAD,
 }
 
 data class ApiContractViolation(

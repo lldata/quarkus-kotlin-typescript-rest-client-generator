@@ -2,13 +2,16 @@ package dk.lldata.tsclientgen.emit
 
 import dk.lldata.tsclientgen.GeneratorOptions
 import dk.lldata.tsclientgen.Scalar
+import dk.lldata.tsclientgen.UntypedPolicy
 import dk.lldata.tsclientgen.fixture.ApiKeyedResource
 import dk.lldata.tsclientgen.fixture.IgnoredResource
 import dk.lldata.tsclientgen.fixture.LocaleResource
 import dk.lldata.tsclientgen.fixture.NamingStrategyResource
 import dk.lldata.tsclientgen.fixture.RenamedResource
+import dk.lldata.tsclientgen.fixture.UntypedResponseResource
 import dk.lldata.tsclientgen.fixtureModel
 import dk.lldata.tsclientgen.testOptions
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import org.junit.jupiter.api.Test
@@ -301,6 +304,50 @@ class TypeScriptClientEmitterTest {
 
         emitted shouldContain "title: string;"
         emitted shouldNotContain "locale"
+    }
+
+    /**
+     * `jakarta.ws.rs.core.Response` is what a plain Jersey or Jakarta EE resource returns, and it
+     * says nothing about its body. The generic refusal sent whoever hit it down two wrong paths —
+     * it is not a payload type to add to `dtoPackages`, and not a scalar to spell — so it names the
+     * real problem and what to do instead.
+     */
+    @Test
+    fun `says what is wrong with a return type that erases its payload`() {
+        val untyped = fixtureModel(UntypedResponseResource::class.java)
+
+        val failure = assertThrows<IllegalStateException> { emitter.emit(untyped.endpoints) }
+
+        failure.message!! shouldContain "does not say what it carries"
+        failure.message!! shouldContain "RestResponse<T>"
+        failure.message!! shouldNotContain "dtoPackages"
+    }
+
+    /**
+     * A codebase that predates the generator can have dozens of these, so refusing is a setting
+     * rather than a rule. `unknown` is the only honest spelling once it does not refuse — anything
+     * narrower would be a guess the caller would then trust.
+     */
+    @Test
+    fun `emits unknown and says so when told to warn about an untyped payload`() {
+        val warnings = mutableListOf<String>()
+        val warning = testOptions.copy(untypedPayloads = UntypedPolicy.Warn, onWarning = { warnings += it })
+
+        val emitted = TypeScriptClientEmitter(warning).emit(fixtureModel(UntypedResponseResource::class.java).endpoints)
+
+        emitted shouldContain "Promise<unknown>"
+        warnings.single() shouldContain "jakarta.ws.rs.core.Response"
+    }
+
+    @Test
+    fun `emits unknown silently when told to ignore it`() {
+        val warnings = mutableListOf<String>()
+        val ignoring = testOptions.copy(untypedPayloads = UntypedPolicy.Ignore, onWarning = { warnings += it })
+
+        val emitted = TypeScriptClientEmitter(ignoring).emit(fixtureModel(UntypedResponseResource::class.java).endpoints)
+
+        emitted shouldContain "Promise<unknown>"
+        warnings.shouldBeEmpty()
     }
 
     /** A payload that reaches itself used to recurse until the stack ran out. */

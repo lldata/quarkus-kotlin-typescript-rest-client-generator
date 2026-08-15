@@ -1,7 +1,12 @@
 # quarkus-kotlin-typescript-rest-client-generator
 
-Generates a TypeScript client from annotated Quarkus/JAX-RS Kotlin resources, by reading the
-compiled classes rather than an OpenAPI document.
+Generates a TypeScript client from annotated Jakarta RESTful Web Services (JAX-RS) Kotlin resources,
+by reading the compiled classes rather than an OpenAPI document.
+
+Quarkus is what it was built against and what the example uses, but nothing in it depends on Quarkus
+— it reads `jakarta.ws.rs` and Jackson annotations, both `compileOnly`. It has been run against a
+plain Jersey application with no Quarkus on the classpath at all. See *Outside Quarkus* below for
+what that costs.
 
 ```ts
 const detail = await api.shelves.shelf("attic").books.isbn("978-0262510875").get();
@@ -150,6 +155,7 @@ project has adopted.
 | `GET_OR_POST_ONLY` | Four verbs where the action belongs in the path. An opinion — filter it out if you disagree. |
 | `USABLE_PATH_SEGMENTS` | A segment that is not a usable member name, or two nodes with one factory name. |
 | `ENUM_QUERY_PARAM_CONVERTIBLE` | The trap below. |
+| `UNTYPED_PAYLOAD` | An endpoint the generator cannot describe — see *Untyped payloads*. Reported for the whole surface at once, whatever the policy. |
 
 **The `@JsonValue` trap.** `@JsonValue` governs the JSON body and nothing else. A query parameter is
 converted by JAX-RS, which uses `valueOf` — so a client sending `?condition=worn` (what Jackson
@@ -172,6 +178,27 @@ from a JDK class that happens to be reachable.
 | `ambientHeaders` | cookie, x-forwarded-for, x-real-ip | Headers the caller never sets. Anything else refuses. |
 | `wrapperTypes` | `RestResponse`, `Uni`, `CompletionStage`, … | Return types that wrap the payload rather than being it. Matched by name, so no Quarkus artifact is needed. |
 | `scalars` | `scalars(ScalarStyle.Named)` | How much identity a wire scalar keeps — see below. Per-type overrides are ordinary map entries. |
+
+## Untyped payloads
+
+Some return types hold a body without declaring it. `jakarta.ws.rs.core.Response` is the obvious
+one, and it is *the idiomatic return in plain JAX-RS* — a Jersey or Jakarta EE surface can be full
+of them. A bare `Any` is the other: it reaches the client as `unknown`, which tells a caller nothing.
+
+There is no good answer the generator can give, so it is a setting:
+
+| `UntypedPolicy` | |
+| --- | --- |
+| `Fail` *(default)* | Refuse, naming the endpoint and what to do instead. |
+| `Warn` | Emit `Promise<unknown>` and report it through `onWarning`. |
+| `Ignore` | Emit `Promise<unknown>` silently. The lint still reports it. |
+
+`Warn` is the adoption setting for a codebase that predates the generator: the client generates, the
+caller is told `unknown` rather than something plausible and wrong, and the build says what it could
+not describe. Fix them, then switch to `Fail` so no new one appears.
+
+The emitter refuses one endpoint at a time, which is no way to discover that fifty are like this, so
+`UNTYPED_PAYLOAD` in the contract lint reports the whole set before you start.
 
 ## Scalars: how much identity a `string` keeps
 
@@ -256,6 +283,19 @@ generator.writeTemporalTo(file, clientImport = "./client.js", temporalImport = "
 
 which emits `import { Temporal } from "@js-temporal/polyfill";` and typechecks on 5.9. The default
 uses the global, which is right for TypeScript 7. The emitted file says which it is using.
+
+## Outside Quarkus
+
+The generator reads JAX-RS annotations, so it works with any framework that uses them — Jersey,
+Jakarta EE, Helidon, RESTEasy standalone. It does **not** work with Spring or Ktor, which have their
+own routing annotations and are not JAX-RS at all; there is nothing for it to read, and it says so
+rather than emitting an empty client.
+
+The one real friction is `jakarta.ws.rs.core.Response`. Quarkus resources tend to return the payload
+type or `RestResponse<T>`, both of which say what they carry. Plain JAX-RS idiomatically returns
+`Response`, which does not — see *Untyped payloads*. That is not a Quarkus feature so much as the
+problem `RestResponse<T>` was added to solve, and it is why a Quarkus surface tends to generate
+cleanly while a Jersey one may need `UntypedPolicy.Warn` first.
 
 ## The transport
 

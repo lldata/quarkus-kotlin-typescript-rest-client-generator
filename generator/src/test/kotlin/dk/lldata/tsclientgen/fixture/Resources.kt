@@ -103,6 +103,14 @@ class NamingStrategyResource {
     fun naming(): NamingStrategyResponse = TODO()
 }
 
+/** The plain-JAX-RS shape: a Response, which holds a body without saying what it is. */
+@TypeScriptApi
+@Path("/api/untyped")
+class UntypedResponseResource {
+    @GET
+    fun untyped(): jakarta.ws.rs.core.Response = TODO()
+}
+
 @TypeScriptApi
 @Path("/api/ignored")
 class IgnoredResource {

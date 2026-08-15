@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonValue
 import dk.lldata.tsclientgen.GeneratorOptions
 import dk.lldata.tsclientgen.Scalar
+import dk.lldata.tsclientgen.UntypedPolicy
 import dk.lldata.typescriptpoet.TypeName
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
@@ -30,6 +31,55 @@ class TypeScriptTypes(
     private companion object {
         /** Matched by name: it lives in jackson-databind, which this library does not depend on. */
         const val JSON_NAMING = "com.fasterxml.jackson.databind.annotation.JsonNaming"
+
+        /**
+         * Return types that hold a body without declaring its type, and what to do instead.
+         *
+         * `jakarta.ws.rs.core.Response` is the idiomatic plain-JAX-RS shape and the one that makes
+         * a Jersey or Jakarta EE codebase harder to generate from than a Quarkus one — which is not
+         * a Quarkus feature so much as what `RestResponse<T>` was added to fix.
+         */
+        val PAYLOAD_ERASING =
+            mapOf(
+                "jakarta.ws.rs.core.Response" to
+                    "Declare the payload as the return type and let the framework set the status, or return a typed " +
+                    "envelope the generator can unwrap — `RestResponse<T>` and `Uni<T>` are unwrapped out of the box, " +
+                    "and GeneratorOptions.wrapperTypes takes more. If the endpoint genuinely has no typed body, return " +
+                    "`Unit` for a bodyless one, or leave its resource off @TypeScriptApi.",
+                "jakarta.ws.rs.core.StreamingOutput" to
+                    "A stream has no JSON shape. Leave this endpoint's resource off @TypeScriptApi and call it directly.",
+            )
+
+        /** Declares a type, and that type says nothing. `JsonNode` is excluded on purpose. */
+        val OPAQUE_PAYLOAD = setOf("kotlin.Any", "java.lang.Object")
+    }
+
+    /**
+     * Why [type] cannot be described to a client, or null when it can.
+     *
+     * Two shapes qualify. One holds a body without declaring what is in it —
+     * `jakarta.ws.rs.core.Response`, the idiomatic plain-JAX-RS return. The other declares a type
+     * that says nothing — a bare `Any`, which reaches the client as `unknown`.
+     *
+     * Public because the emitter and [dk.lldata.tsclientgen.lint.ApiContractLint] must agree about
+     * it: the emitter refuses one endpoint at a time, which is no way to find out that fifty of
+     * them are like this, so the lint reports the whole set before anyone tries to generate.
+     *
+     * `JsonNode` is deliberately not here. Arbitrary JSON is a real thing for an endpoint to
+     * return, `unknown` describes it accurately, and the caller has to narrow it either way.
+     */
+    fun untypedPayload(type: KType): String? {
+        val name = (type.classifier as? KClass<*>)?.qualifiedName ?: return null
+        PAYLOAD_ERASING[name]?.let {
+            return "`$name` does not say what it carries, so the generator cannot tell the client what the call " +
+                "returns. $it"
+        }
+        return if (name in OPAQUE_PAYLOAD) {
+            "`$name` reaches the client as `unknown`, which tells a caller nothing. Declare the shape it " +
+                "actually carries, or use a `JsonNode` to say the JSON is genuinely arbitrary."
+        } else {
+            null
+        }
     }
 
     /** A DTO the emitter has to declare, as opposed to something with a TypeScript spelling already. */
@@ -184,6 +234,22 @@ class TypeScriptTypes(
             val element = type.arguments.firstOrNull()?.type ?: return TypeName.arrayShorthandType(TypeName.implicit("unknown"))
             return TypeName.arrayShorthandType(nullableTypeOf(element))
         }
+        // A type that erases its own payload cannot be described, and the advice below would send
+        // whoever hit it down two wrong paths — it is not a payload type to be declared, and it is
+        // not a scalar to be spelled. Say what is actually wrong instead.
+        // Something the generator cannot describe. What happens next is the project's call: refuse,
+        // say so and emit `unknown`, or emit `unknown` quietly. `unknown` is the only honest
+        // spelling in the last two cases — anything narrower would be a guess the caller would then
+        // trust.
+        untypedPayload(type)?.let { reason ->
+            when (options.untypedPayloads) {
+                UntypedPolicy.Fail -> error(reason)
+                UntypedPolicy.Warn -> options.onWarning(reason)
+                UntypedPolicy.Ignore -> Unit
+            }
+            return TypeName.implicit("unknown")
+        }
+
         // A name nothing declares is a file that does not compile, and it used to be emitted
         // silently: a `java.util.Locale` on a payload became `locale: Locale` with no `Locale` in
         // the file. Refusing here is the same rule the emitter applies to a param shape it cannot
