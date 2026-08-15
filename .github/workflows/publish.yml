@@ -1,0 +1,136 @@
+name: Publish
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+**"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    # Only the canonical repository holds the publishing secrets.
+    if: github.repository == 'lldata/quarkus-kotlin-typescript-rest-client-generator'
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      # Signing turns itself on when a key is present, so a missing secret would otherwise upload an
+      # unsigned bundle and be rejected minutes later by the Portal. This is the only place where an
+      # absent key means something has gone wrong, so this is where it is checked.
+      - name: Require the publishing secrets
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+        run: |
+          missing=""
+          for name in SIGNING_KEY SIGNING_PASSWORD MAVEN_CENTRAL_USERNAME MAVEN_CENTRAL_PASSWORD; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::No value for repository secret(s):$missing"
+            exit 1
+          fi
+
+      # The tag is the version. Nothing reads it from gradle.properties here, so a tag that does not
+      # match what is committed fails the check below rather than publishing the wrong number.
+      - name: Resolve the version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Check the tag matches the committed version
+        env:
+          TAGGED: ${{ steps.version.outputs.version }}
+        run: |
+          committed=$(sed -n 's/^version=//p' gradle.properties)
+          if [ "$committed" != "$TAGGED" ]; then
+            echo "::error::Tag v$TAGGED does not match gradle.properties version $committed"
+            exit 1
+          fi
+
+      # The whole build, including the example's drift gate and the contract lint. A release that
+      # cannot regenerate its own example client is not one to publish.
+      - name: Build
+        run: ./gradlew build ktlintCheck
+
+      - name: Type-check the generated client
+        working-directory: example/web
+        run: |
+          npm ci
+          npm run typecheck
+
+      # Uploads a bundle to the Central Portal; it does NOT release to Maven Central. The deployment
+      # waits at https://central.sonatype.com/publishing for a human to press Publish, which is the
+      # intended shape: a released version is permanent and cannot be recalled.
+      #
+      # Every credential arrives as an environment variable. Passing them as `-P` flags would put
+      # them in the runner's process table and in the echoed `Run` line of the log.
+      - name: Publish to the Central Portal
+        env:
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+        run: |
+          set -o pipefail
+          ./gradlew publishToMavenCentral | tee publish.log
+
+      # The upload reports success as soon as the Portal accepts the bundle, before it has validated
+      # it. Without this a green run says nothing about whether the deployment is releasable, which
+      # is the question the run exists to answer.
+      - name: Report the deployment status
+        env:
+          USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+        run: |
+          id=$(sed -n 's/.*deployment id: \([0-9a-f-]*\).*/\1/p' publish.log | head -1)
+          if [ -z "$id" ]; then
+            echo "::error::The publish step reported no deployment id."
+            exit 1
+          fi
+
+          token=$(printf '%s:%s' "$USERNAME" "$PASSWORD" | base64 -w0)
+          # Derived from two secrets, so it is not masked automatically.
+          echo "::add-mask::$token"
+
+          for _ in $(seq 1 20); do
+            state=$(curl -sS -X POST -H "Authorization: Bearer $token" \
+              "https://central.sonatype.com/api/v1/publisher/status?id=$id" \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin).get("deploymentState",""))')
+            echo "deployment $id: ${state:-unknown}"
+            case "$state" in
+              VALIDATED|PUBLISHED)
+                echo "::notice::Deployment $state — publish it at https://central.sonatype.com/publishing"
+                exit 0
+                ;;
+              FAILED)
+                echo "::error::Deployment failed validation."
+                exit 1
+                ;;
+            esac
+            sleep 15
+          done
+
+          echo "::warning::Still ${state:-unknown} after five minutes; check the Portal."
+
+      # A draft, so the notes can be written before anyone sees them — and so a tag pushed by
+      # accident does not announce itself.
+      - name: Draft the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          --draft
+          --title "${{ steps.version.outputs.version }}"
+          generator/build/libs/*.jar annotations/build/libs/*.jar

@@ -1,7 +1,6 @@
 plugins {
     kotlin("jvm")
     `java-library`
-    `maven-publish`
     id("org.jlleitschuh.gradle.ktlint")
 }
 
@@ -50,7 +49,6 @@ kotlin {
 }
 
 java {
-    withSourcesJar()
     // There is no Java source here, but Gradle still validates that the two compilers agree.
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
@@ -61,14 +59,5 @@ tasks.test {
     testLogging {
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-    }
-}
-
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            artifactId = "quarkus-kotlin-typescript-rest-client-generator"
-            from(components["java"])
-        }
     }
 }

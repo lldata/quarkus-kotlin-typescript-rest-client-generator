@@ -104,6 +104,13 @@ class NamingStrategyResource {
 }
 
 @TypeScriptApi
+@Path("/api/ignored")
+class IgnoredResource {
+    @GET
+    fun ignored(): IgnoredUnmappableResponse = TODO()
+}
+
+@TypeScriptApi
 @Path("/api/locale")
 class LocaleResource {
     @GET

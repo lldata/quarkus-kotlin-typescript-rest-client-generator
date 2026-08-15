@@ -7,7 +7,6 @@ import dk.lldata.tsclientgen.format.SourceFormatter
 import dk.lldata.tsclientgen.lint.ApiContractLint
 import dk.lldata.tsclientgen.model.ApiModel
 import dk.lldata.tsclientgen.model.ApiModelReader
-import dk.lldata.tsclientgen.model.ParamSource
 import java.io.File
 
 /**
@@ -83,33 +82,31 @@ class ClientGenerator(
      * (https://caniuse.com/temporal). Importing this module is how a project says it has decided.
      *
      * @param clientImport how this module should import the client, spelled as the statement reads.
+     * @param temporalImport where `Temporal` itself comes from. Null uses the global, which
+     *   TypeScript declares in its own lib from 7.0 and not before. On an older TypeScript, name a
+     *   polyfill — `"@js-temporal/polyfill"` — because the polyfills export `Temporal` as a module
+     *   member and declare no global, so `lib: "esnext"` cannot supply it however it is set.
      */
     fun writeTemporalTo(
         target: File,
         clientImport: String = "./client",
+        temporalImport: String? = null,
     ): File? {
-        val source = temporalSource(clientImport) ?: return null
+        val source = temporalSource(clientImport, temporalImport) ?: return null
         target.parentFile?.mkdirs()
         target.writeText(source)
         return target
     }
 
     /** The `Temporal` module as it should be on disk, or null when there is nothing to convert. */
-    fun temporalSource(clientImport: String = "./client"): String? {
-        val scalars = TypeScriptTypes(options).reachable(coveredTypes()).namedScalars
-        return TemporalModuleEmitter(options).emit(scalars, clientImport)?.let(formatter::format)
+    fun temporalSource(
+        clientImport: String = "./client",
+        temporalImport: String? = null,
+    ): String? {
+        val roots = TypeScriptClientEmitter.rootTypesOf(model.clientSurface)
+        val scalars = TypeScriptTypes(options).reachable(roots).namedScalars
+        return TemporalModuleEmitter(options).emit(scalars, clientImport, temporalImport)?.let(formatter::format)
     }
-
-    /**
-     * Everything the client's types are built from — the same roots the emitter walks, so the
-     * conversion module can only mention scalars the client actually has.
-     */
-    private fun coveredTypes() =
-        model.clientSurface.let { covered ->
-            covered.map { it.responseType }.filterNot { ApiModelReader.isBodyless(it) } +
-                covered.mapNotNull { it.body?.type } +
-                covered.flatMap { it.params }.filter { it.source == ParamSource.PATH || it.source == ParamSource.QUERY }.map { it.type }
-        }
 
     /**
      * The first line where [target] and a fresh render disagree, or null when they agree.

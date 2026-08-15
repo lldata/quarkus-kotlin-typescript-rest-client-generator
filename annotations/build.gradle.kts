@@ -1,7 +1,6 @@
 plugins {
     kotlin("jvm")
     `java-library`
-    `maven-publish`
     id("org.jlleitschuh.gradle.ktlint")
 }
 
@@ -27,16 +26,6 @@ kotlin {
 }
 
 java {
-    withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
-}
-
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            artifactId = "quarkus-kotlin-typescript-rest-client-annotations"
-            from(components["java"])
-        }
-    }
 }

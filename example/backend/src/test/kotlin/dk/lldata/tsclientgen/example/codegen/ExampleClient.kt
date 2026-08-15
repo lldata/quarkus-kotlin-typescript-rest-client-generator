@@ -32,7 +32,7 @@ object ExampleClient {
                     "the generator, and re-run `./gradlew :example:backend:generateApiClient`.",
         )
 
-    /** Where the web app keeps its generated sources. Both files are committed. */
+    /** Where the web app keeps its generated sources. All three are committed. */
     private val generatedDir = File(repoRoot(), "example/web/src/generated")
 
     val clientFile: File = File(generatedDir, "client.ts")

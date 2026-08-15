@@ -90,20 +90,19 @@ Four of the example's types, as each side describes them:
 | `Condition` | `enum: [NEW, USED, WORN]` | `"new" \| "used" \| "worn"` | `"worn"` — `@JsonValue` |
 | `BorrowResponse` | `{ outcome }` — the sealed base's own member, no variants | `BorrowAccepted \| BorrowRefused` | one of the two variants, in full |
 | `note` on `BookDetailResponse` | `required`, `string \| null` | `note?: string \| null` | absent — the class is `@JsonInclude(NON_NULL)` |
-| `Instant` | `string`, `format: date-time` | `Instant` (`= string`) | an ISO-8601 string |
+| `Instant` | `string`, `format: date-time` | `Instant`, branded | an ISO-8601 string |
 
 The first three are the failure this project exists to prevent: a client generated from that
 document would compare `condition === "NEW"` against a payload that says `"worn"`, would see nothing
 on a `BorrowResponse` but `outcome`, and would null-check a field that is not there. Each one
 compiles.
 
-The fourth is the closest OpenAPI comes to winning, and it is worth saying out loud. `format:
-date-time` is a claim about the *shape* of the string; `export type Instant = string` is only a
-name, structurally identical to `string`, so nothing stops a title being assigned to it. The
-generator names the scalar rather than inlining it — the same treatment `Isbn` gets, since both are
-"a scalar with a name in Kotlin" — but naming buys documentation, not enforcement.
-`Scalar.branded("Instant", "string")` buys the enforcement, at the cost of a cast wherever a client
-*constructs* one. All three positions are one line in `GeneratorOptions.scalars`; see
+The fourth is the one worth reading carefully, because the two sides are making different claims.
+`format: date-time` describes the *shape* of the string and enforces nothing. This example runs
+`ScalarStyle.ValueObject`, so `Instant` is a branded alias with a companion: a title cannot be
+assigned to `addedAt`, and constructing one goes through `Instant.from`, which checks it. On the
+default `ScalarStyle.Named` it would be `export type Instant = string` — a name, and no more
+enforcement than OpenAPI's. All three positions are one line in `GeneratorOptions.scalars`; see
 [Scalar.kt](../generator/src/main/kotlin/dk/lldata/tsclientgen/Scalar.kt).
 
 Two more things the document gets right and the table does not show: `AddBookRequest` marks

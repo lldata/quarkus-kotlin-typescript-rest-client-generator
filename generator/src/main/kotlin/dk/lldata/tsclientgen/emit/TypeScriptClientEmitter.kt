@@ -33,6 +33,7 @@ import dk.lldata.typescriptpoet.dsl.type
 import dk.lldata.typescriptpoet.dsl.typeArgument
 import dk.lldata.typescriptpoet.dsl.typeParam
 import kotlin.reflect.KClass
+import kotlin.reflect.KType
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
 
@@ -61,15 +62,7 @@ class TypeScriptClientEmitter(
 
     fun emit(endpoints: List<Endpoint>): String {
         val requestBodyTypes = endpoints.mapNotNull { it.body?.type }
-        val responseTypes = endpoints.map { it.responseType }.filterNot { ApiModelReader.isBodyless(it) }
-        // Path and query parameters too: an enum or a value class in a query string is spelled by
-        // its own name in the call signature, so it has to be declared like any payload type.
-        val parameterTypes =
-            endpoints
-                .flatMap { it.params }
-                .filter { it.source == ParamSource.PATH || it.source == ParamSource.QUERY }
-                .map { it.type }
-        val reachable = types.reachable(responseTypes + requestBodyTypes + parameterTypes)
+        val reachable = types.reachable(rootTypesOf(endpoints))
         val dtos = reachable.dtos
         val requestDtos = types.reachableDtos(requestBodyTypes).toSet()
 
@@ -196,6 +189,25 @@ class TypeScriptClientEmitter(
                 },
             )
         }
+    }
+
+    companion object {
+        /**
+         * Every type the client is built from: what a call answers with, what it sends, and what
+         * its path and query parameters are spelled as — an enum or a value class in a query string
+         * is named in the call signature, so it has to be declared like any payload type.
+         *
+         * Here rather than inline, because anything else that has to agree with the emitter about
+         * the client's types — the `Temporal` module, most obviously — has to ask the same question,
+         * and a second copy of this list is how the two quietly stop agreeing.
+         */
+        fun rootTypesOf(endpoints: List<Endpoint>): List<KType> =
+            endpoints.map { it.responseType }.filterNot { ApiModelReader.isBodyless(it) } +
+                endpoints.mapNotNull { it.body?.type } +
+                endpoints
+                    .flatMap { it.params }
+                    .filter { it.source == ParamSource.PATH || it.source == ParamSource.QUERY }
+                    .map { it.type }
     }
 
     private fun variantNames(dto: KClass<*>): Array<TypeName> =

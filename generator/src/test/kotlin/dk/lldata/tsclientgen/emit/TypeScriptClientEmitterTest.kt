@@ -3,6 +3,7 @@ package dk.lldata.tsclientgen.emit
 import dk.lldata.tsclientgen.GeneratorOptions
 import dk.lldata.tsclientgen.Scalar
 import dk.lldata.tsclientgen.fixture.ApiKeyedResource
+import dk.lldata.tsclientgen.fixture.IgnoredResource
 import dk.lldata.tsclientgen.fixture.LocaleResource
 import dk.lldata.tsclientgen.fixture.NamingStrategyResource
 import dk.lldata.tsclientgen.fixture.RenamedResource
@@ -287,6 +288,19 @@ class TypeScriptClientEmitterTest {
 
         failure.message!! shouldContain "@JsonNaming"
         failure.message!! shouldContain "@JsonProperty"
+    }
+
+    /**
+     * The order of the two rules matters and is easy to lose: ignored properties are filtered out
+     * *before* their types are resolved, so a field that is not on the wire cannot fail the build
+     * for having a type the generator has no spelling for.
+     */
+    @Test
+    fun `does not resolve the type of a property it is not emitting`() {
+        val emitted = TypeScriptClientEmitter(testOptions).emit(fixtureModel(IgnoredResource::class.java).endpoints)
+
+        emitted shouldContain "title: string;"
+        emitted shouldNotContain "locale"
     }
 
     /** A payload that reaches itself used to recurse until the stack ran out. */

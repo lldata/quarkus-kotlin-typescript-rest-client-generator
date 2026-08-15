@@ -86,9 +86,9 @@ transitives**, so the generator's own two come by hand:
 repositories { mavenCentral() }
 
 dependencies {
-    implementation(files("libs/quarkus-kotlin-typescript-rest-client-annotations-1.0.0-alpha2.jar"))
+    implementation(files("libs/quarkus-kotlin-typescript-rest-client-annotations-1.0.0-alpha3.jar"))
 
-    testImplementation(files("libs/quarkus-kotlin-typescript-rest-client-generator-1.0.0-alpha2.jar"))
+    testImplementation(files("libs/quarkus-kotlin-typescript-rest-client-generator-1.0.0-alpha3.jar"))
     testImplementation("dk.lldata:typescriptpoet:2.0.0-alpha10")
     testImplementation(kotlin("reflect"))
 }
@@ -108,8 +108,8 @@ repositories {
 }
 
 dependencies {
-    implementation("dk.lldata:quarkus-kotlin-typescript-rest-client-annotations:1.0.0-alpha2")
-    testImplementation("dk.lldata:quarkus-kotlin-typescript-rest-client-generator:1.0.0-alpha2")
+    implementation("dk.lldata:quarkus-kotlin-typescript-rest-client-annotations:1.0.0-alpha3")
+    testImplementation("dk.lldata:quarkus-kotlin-typescript-rest-client-generator:1.0.0-alpha3")
 }
 ```
 
@@ -237,11 +237,25 @@ fromTemporal.instant(someInstant);     // back to the wire type, validated if br
 It is cheap because ISO-8601 is what both sides already speak: the string the server writes is the
 format `Temporal` parses, so there is no conversion layer and nothing runs per response.
 
-Separate from the client for a reason that survives full browser support — naming `Temporal.Instant`
-in `client.ts` would force `lib: "esnext"` on every project that imports the client, and importing
-this module is how a project says it has decided. As of July 2026 that decision is real:
-[caniuse](https://caniuse.com/temporal) put `Temporal` at 69% of global usage, and Node 24 needs
+Separate from the client because naming `Temporal.Instant` in `client.ts` would put its requirements
+on every project that imports the client. Importing this module is how a project says it has decided
+— and there are two decisions, not one.
+
+**At runtime**, `Temporal` is not everywhere: [caniuse](https://caniuse.com/temporal) put it at 69%
+of global usage in July 2026, the gap being older Safari and iOS, and Node 24 needs
 `--harmony-temporal` (where the API is an older draft than the browsers').
+
+**At compile time**, the `Temporal` *types* come from TypeScript's own `lib.esnext.temporal.d.ts`,
+which 7.0 ships and 5.9 does not — and no `lib` setting conjures it on a TypeScript that lacks it.
+The polyfills do not help by themselves either: they export `Temporal` as a module member and
+declare no global. On an older TypeScript, say where it lives and the module imports it:
+
+```kotlin
+generator.writeTemporalTo(file, clientImport = "./client.js", temporalImport = "@js-temporal/polyfill")
+```
+
+which emits `import { Temporal } from "@js-temporal/polyfill";` and typechecks on 5.9. The default
+uses the global, which is right for TypeScript 7. The emitted file says which it is using.
 
 ## The transport
 

@@ -30,6 +30,10 @@ import dk.lldata.typescriptpoet.dsl.returns
 class TemporalModuleEmitter(
     private val options: GeneratorOptions,
 ) {
+    private companion object {
+        const val TEMPORAL = "Temporal"
+    }
+
     /**
      * The module, or null when nothing the client uses converts to a `Temporal` type — in which case
      * there is no file to write rather than an empty one to explain.
@@ -37,6 +41,7 @@ class TemporalModuleEmitter(
     fun emit(
         scalars: List<Scalar>,
         clientImport: String,
+        temporalImport: String? = null,
     ): String? {
         val convertible = scalars.filter { it.temporal != null }.distinctBy { it.reference }
         if (convertible.isEmpty()) return null
@@ -46,9 +51,22 @@ class TemporalModuleEmitter(
         // reads like a mistake.
         val imported = convertible.associateWith { TypeName.namedImport(it.reference, clientImport) }
 
+        // Where `Temporal` itself comes from. Null means the global, which is declared by
+        // TypeScript's own `lib.esnext.temporal.d.ts` — present in 7.0, absent in 5.9. A project on
+        // a TypeScript without it names a polyfill here instead, because the polyfills export
+        // `Temporal` as a module member and declare no global at all, so `lib: "esnext"` cannot
+        // help them however it is set.
+        val temporal = temporalImport?.let { TypeName.namedImport(TEMPORAL, it) }
+
         val spec =
             file("client-temporal") {
                 addComment(options.header)
+                addComment(
+                    "\nThis module names `Temporal`. It is declared by TypeScript's own lib from 7.0 " +
+                        "(with `lib: \"esnext\"`),\nand by nothing at all before that — the polyfills export it as " +
+                        "a module member rather than a global.\nOn an older TypeScript, regenerate with " +
+                        "`temporalImport` set to the polyfill and this file will import it.",
+                )
                 property("toTemporal", TypeName.implicit(toTemporalType(convertible)), Modifier.EXPORT, Modifier.CONST) {
                     initializer(
                         "%L",
@@ -59,7 +77,11 @@ class TemporalModuleEmitter(
                                     arrow(memberName(scalar)) {
                                         parameter("value", imported.getValue(scalar))
                                         returns(TypeName.implicit(scalar.temporal!!))
-                                        expression("%L.from(value)", scalar.temporal!!)
+                                        if (temporal == null) {
+                                            expression("%L.from(value)", scalar.temporal!!)
+                                        } else {
+                                            expression("%T.%L.from(value)", temporal, memberOf(scalar))
+                                        }
                                     },
                                 )
                             }
@@ -96,6 +118,9 @@ class TemporalModuleEmitter(
         spec.writeTo(rendered)
         return rendered.toString()
     }
+
+    /** `Instant` out of `Temporal.Instant` — what to call on the namespace once it is imported. */
+    private fun memberOf(scalar: Scalar): String = scalar.temporal!!.substringAfter('.')
 
     /** `instant`, `localDate` — the alias, lowercased at the front, since it is a member now. */
     private fun memberName(scalar: Scalar): String = scalar.reference.replaceFirstChar { it.lowercase() }

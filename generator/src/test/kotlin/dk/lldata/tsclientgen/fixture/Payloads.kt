@@ -155,6 +155,12 @@ data class NamingStrategyResponse(
     val displayName: String,
 )
 
+/** An ignored property whose type the generator has no spelling for. It is not on the wire. */
+data class IgnoredUnmappableResponse(
+    val title: String,
+    @JsonIgnore val locale: java.util.Locale,
+)
+
 /** A property whose type the generator has no rule for: not a payload, not a known scalar. */
 data class UnknownScalarResponse(
     val locale: java.util.Locale,
