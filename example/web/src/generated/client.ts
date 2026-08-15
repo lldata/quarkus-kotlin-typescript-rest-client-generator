@@ -18,7 +18,9 @@ export const Instant: CheckedScalar<string, Instant> = {
     return raw;
   },
   is: (raw: string): raw is Instant =>
-    /^(?:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))$/u.test(raw),
+    /^(?:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))$/u.test(
+      raw,
+    ),
 };
 
 export type ShelfSlug = string;

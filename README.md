@@ -321,6 +321,13 @@ TypeScript, pass `ClientGenerator` a `formatter = Prettier(binary, filePath)`
 ([SourceFormatter.kt](generator/src/main/kotlin/dk/lldata/tsclientgen/format/SourceFormatter.kt)) so
 the committed file needs no formatting exemption.
 
+**Do not format the generated files with your own formatter instead.** Two authorities over one file
+agree only by coincidence: your formatter rewrites what the emitter wrote, `driftAgainst` then reports
+the file as stale, and regenerating and reformatting never converge. Either exclude the generated
+directory from your formatter, or pass that same formatter here so both gates are looking at the same
+bytes. The emitted output is a Prettier fixed point at default settings, so with no formatter
+configured at all, excluding the directory costs nothing.
+
 Give the drift check the same instance — they must not disagree about what "generated" means. It
 refuses rather than falling back to unformatted output: a drift check comparing two unformatted
 strings passes while the committed file is wrong.

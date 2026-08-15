@@ -128,8 +128,21 @@ class TypeScriptClientEmitterTest {
         emitted shouldContain "from: (raw: string): Instant =>"
         // Anchored, because Bean Validation matches the whole input and `test` does not.
         emitted shouldContain "/^(?:"
-        emitted shouldContain ")$/u.test(raw)"
+        emitted shouldContain ")$/u.test("
         emitted shouldContain "is: (raw: string): raw is Instant =>"
+    }
+
+    /**
+     * A regex literal is one token and this one is 80 characters, so the line overruns whatever the
+     * writer does. Breaking the argument is all there is, and it is what a formatter would do — so a
+     * project that runs Prettier over its generated client gets a no-op instead of a reformat that
+     * then reads as drift.
+     */
+    @Test
+    fun `breaks the guard's argument, where a formatter would`() {
+        val emitted = TypeScriptClientEmitter(testOptions.copy(scalars = GeneratorOptions.VALUE_OBJECT_SCALARS)).emit(model.clientSurface)
+
+        emitted shouldContain ")$/u.test(\n      raw,\n    ),"
     }
 
     /** No pattern, no guard: one that always returned true would read as a check and be none. */

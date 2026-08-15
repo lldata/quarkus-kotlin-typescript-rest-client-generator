@@ -182,7 +182,14 @@ class TypeScriptClientEmitter(
                             arrow("is") {
                                 parameter("raw", TypeName.implicit(raw))
                                 returns(TypeName.implicit("raw is $name"))
-                                expression("%L.test(raw)", regex)
+                                // Built as a call rather than spelled, so the writer can break the
+                                // argument list. A regex literal is one token and is often wider
+                                // than the print width on its own — this one is 80 characters — so
+                                // the line overruns whatever happens. Breaking where a formatter
+                                // would break means a project that runs Prettier over its generated
+                                // client gets a no-op rather than a reformat, and the drift gate and
+                                // the format gate stop disagreeing about the same file.
+                                expression(call("$regex.test") { argument("raw") })
                             },
                         )
                     }
