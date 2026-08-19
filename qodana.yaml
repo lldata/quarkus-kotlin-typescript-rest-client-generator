@@ -1,0 +1,28 @@
+# IntelliJ inspections -- the analyser behind the warnings the IDE shows, which neither the Kotlin
+# CLI compiler nor ktlint reports.
+version: "1.0"
+linter: jetbrains/qodana-jvm-community:2026.2
+
+profile:
+  name: qodana.recommended
+
+bootstrap: ./gradlew classes testClasses
+
+exclude:
+  - name: All
+    paths:
+      - build
+      - .gradle
+      - annotations/build
+      - generator/build
+      - example/backend/build
+      - example/web/node_modules
+      # Generated on purpose and compared byte for byte by the drift test. Inspecting it would
+      # report on the generator's output as though it were handwritten source, and the only
+      # honest fix for a finding here is a change to the emitter.
+      - example/web/src/generated
+
+  # This is a library: most of its public API is unused *within* the repository and called only by
+  # consumers, so UnusedSymbol reports the surface it ships on purpose. Dead private code is a
+  # different question and is still caught.
+  - name: UnusedSymbol

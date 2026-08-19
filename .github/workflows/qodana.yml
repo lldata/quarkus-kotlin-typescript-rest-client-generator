@@ -1,0 +1,72 @@
+name: Qodana
+
+# IntelliJ inspections are what the IDE shows and what the Kotlin CLI compiler and ktlint do not
+# report, so they are otherwise invisible outside an editor.
+#
+# This is not a required check. It reports; `CI` gates. A finding here is something to read and
+# decide about, not something that blocks a merge — see AGENTS.md under Merging.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Runs for the same ref queue rather than pile up. cancel-in-progress only for pull requests: on
+# main every commit should keep its own verified result, so a rapid second push queues behind the
+# first instead of cancelling it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  qodana:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+
+    steps:
+
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    # The toolchain the build asks for; the bootstrap below runs Gradle.
+    - uses: actions/setup-java@v5
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    - name: Qodana Scan
+      uses: JetBrains/qodana-action@v2026.2.0
+      with:
+        # No baseline: it would report zero while hiding the findings. No token either — the scan
+        # and its SARIF work without one; a token only adds cloud reporting.
+        pr-mode: false
+        use-caches: true
+
+    # The SARIF is the durable output, and on a private repository without Advanced Security the
+    # code-scanning upload below is refused. Keeping the file as an artifact means the findings
+    # survive either way.
+    - name: Keep the SARIF
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: qodana-sarif-${{ github.run_id }}
+        path: ${{ runner.temp }}/qodana/results/qodana.sarif.json
+        retention-days: 30
+        if-no-files-found: warn
+
+    # Code scanning needs GitHub Advanced Security while this repository is private, so this is
+    # allowed to fail rather than reddening the run for a reason that is about the plan rather
+    # than about the code. It starts working on its own if the repository goes public.
+    - name: Upload to code scanning
+      if: always()
+      continue-on-error: true
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ runner.temp }}/qodana/results/qodana.sarif.json
