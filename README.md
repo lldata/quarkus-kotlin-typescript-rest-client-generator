@@ -266,10 +266,22 @@ generator.writeTo(clientFile)
 generator.writeStampTo(File("src/main/resources/api-stamp.txt"))
 ```
 
-From there it is an endpoint a consumer's CI can call, or a filter that reads the request header —
-both a few lines you write, against a value you can decompose because you minted it. If a resource
-reads the stamp with `@HeaderParam`, add the name to `ambientHeaders`: the client sets that header
-and the caller never does, which is exactly what that option is for.
+From there it is a filter that reads the request header, or an endpoint a consumer's CI can call —
+both a few lines you write, against a value you can decompose because you minted it. The example
+has the filter, in
+[`ApiStampFilter`](example/backend/src/main/kotlin/dk/lldata/tsclientgen/example/ApiStampFilter.kt):
+
+```
+WARN  client was generated against API stamp deadbeef, this backend is ca500faf.
+      Regenerate it: the two describe different APIs, though the calls it makes may still work.
+```
+
+Once per distinct stamp rather than once per request — a stale client calls constantly, and the
+thousandth copy of that line carries nothing the first did not. A caller that sends no stamp is
+ignored rather than reported: that is curl, or a health check, not a client that has drifted.
+
+If a resource reads the stamp with `@HeaderParam` instead, add the name to `ambientHeaders`: the
+client sets that header and the caller never does, which is exactly what that option is for.
 
 **It reports; it does not refuse.** Two stamps differing does not mean the client is broken — most
 backend changes are additive, and a client generated before one usually still works. Answering "is

@@ -35,8 +35,10 @@ it does, the artifacts are available through `./gradlew publishToMavenLocal` —
   `StampOptions.header` sends it on every call from `createApi`; leaving it null exports the
   constants and sends nothing, since a default header name would put one this library invented on
   the wire. `ClientGenerator.writeStampTo` writes the same value onto the backend's classpath, so a
-  server compares rather than merely receives — the endpoint or filter that reads it is a few lines
-  a project writes, and the generator emits neither.
+  server compares rather than merely receives — the filter or endpoint that reads it is a few lines
+  a project writes, and the generator emits neither. The example has the filter, warning once per
+  distinct stamp when a caller's client was generated against a different API than the backend
+  serves.
 
   The hash is over the contract rather than the emitted bytes, so it reports incompatibility rather
   than churn: a doc comment, a layout decision, or `runtimeImport` being rewritten by a vendoring

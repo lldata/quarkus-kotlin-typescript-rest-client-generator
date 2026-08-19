@@ -4,6 +4,7 @@ import dk.lldata.tsclientgen.ClientGenerator
 import dk.lldata.tsclientgen.GeneratorOptions
 import dk.lldata.tsclientgen.ScalarStyle
 import dk.lldata.tsclientgen.StampOptions
+import dk.lldata.tsclientgen.example.ApiStamp
 import java.io.File
 
 /**
@@ -14,13 +15,6 @@ import java.io.File
  * application depends on it, and the drift gate is the same code as the writer.
  */
 object ExampleClient {
-    /**
-     * One constant, shared by the options below and by whatever reads the header server-side. The
-     * generator writes the stamp's *value*; agreeing on the name is the project's own business, and
-     * a second spelling of it is the only way the two ends can drift apart.
-     */
-    const val STAMP_HEADER: String = "x-api-stamp"
-
     private val options =
         GeneratorOptions(
             dtoPackages = listOf("dk.lldata.tsclientgen.example"),
@@ -43,7 +37,10 @@ object ExampleClient {
             // in here would tie this committed client to the release that emitted it, so cutting a
             // version would fail the drift test until someone regenerated a file nothing had
             // changed in.
-            stamp = StampOptions(value = { it.short }, header = STAMP_HEADER),
+            // The header name comes from the application rather than being declared here: it is
+            // `ApiStampFilter` that has to agree with the emitted client, and one spelling of it is
+            // the only way they cannot drift apart.
+            stamp = StampOptions(value = { it.short }, header = ApiStamp.HEADER),
         )
 
     /** Where the web app keeps its generated sources. All three are committed. */
