@@ -1,4 +1,4 @@
-package dk.lldata.tsclientgen.example
+package dk.lldata.tsclientgen.example.domain
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonSubTypes

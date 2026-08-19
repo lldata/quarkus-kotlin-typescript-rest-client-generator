@@ -1,4 +1,4 @@
-package dk.lldata.tsclientgen.example
+package dk.lldata.tsclientgen.example.domain
 
 import jakarta.enterprise.context.ApplicationScoped
 import java.time.Instant

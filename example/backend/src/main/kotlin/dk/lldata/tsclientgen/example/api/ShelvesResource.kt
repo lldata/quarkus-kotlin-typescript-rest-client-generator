@@ -1,6 +1,8 @@
-package dk.lldata.tsclientgen.example
+package dk.lldata.tsclientgen.example.api
 
 import dk.lldata.tsclientgen.TypeScriptApi
+import dk.lldata.tsclientgen.example.domain.Catalogue
+import dk.lldata.tsclientgen.example.domain.Shelf
 import jakarta.ws.rs.GET
 import jakarta.ws.rs.Path
 import jakarta.ws.rs.Produces
