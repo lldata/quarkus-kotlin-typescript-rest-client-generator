@@ -32,6 +32,15 @@ class GeneratedClientDriftTest {
         ExampleClient.temporalFile.readText() shouldBe generator.temporalSource(clientImport = "./client.js")
     }
 
+    /**
+     * The backend's copy has to be the client's, or the comparison it exists for compares two
+     * different answers and always disagrees.
+     */
+    @Test
+    fun `the committed stamp matches the one the client carries`() {
+        ExampleClient.stampFile.readText().trim() shouldBe generator.stamp
+    }
+
     @Test
     fun `the API keeps the contract the client is generated from`() {
         generator.lint().check()

@@ -196,6 +196,85 @@ from a JDK class that happens to be reachable.
 | `ambientHeaders` | cookie, x-forwarded-for, x-real-ip | Headers the caller never sets. Anything else refuses. |
 | `wrapperTypes` | `RestResponse`, `Uni`, `CompletionStage`, … | Return types that wrap the payload rather than being it. Matched by name, so no Quarkus artifact is needed. |
 | `scalars` | `scalars(ScalarStyle.Named)` | How much identity a wire scalar keeps — see below. Per-type overrides are ordinary map entries. |
+| `stamp` | off | Provenance the client carries, so a copy of it can tell it is stale — see below. |
+
+## Stamping the client
+
+Inside your repository, a drift test is the gate: regenerate, compare, fail. Outside it there is
+nothing. A vendored copy — a second service that cannot run the generator, because that needs the
+backend's compiled classes — can only establish that it is current by cloning the backend and
+regenerating, so in practice it finds out when a call fails.
+
+A stamp is what that copy has instead. It is off by default; naming a `stamp` turns it on.
+
+```kotlin
+GeneratorOptions(
+    dtoPackages = listOf("com.example.api"),
+    stamp = StampOptions(
+        value = { "${System.getProperty("myapp.version")}.${it.short}" },
+        header = "x-api-stamp",
+    ),
+)
+```
+
+```ts
+export const API_STAMP: string = "4.2.0.9f3c1a2e";
+export const API_STAMP_HEADER: string = "x-api-stamp";
+
+export function createApi(baseConfig: ApiConfig = {}) {
+  const config: ApiConfig = {
+    ...baseConfig,
+    headers: { "x-api-stamp": API_STAMP, ...baseConfig.headers },
+  };
+  ...
+```
+
+A `const` rather than only a comment in the header, because a comment can be diffed and not sent.
+The consumer treats it as opaque — it compares it and reports a mismatch, never parses it — so the
+composition can change without breaking anyone.
+
+**The composition is yours.** The generator supplies an `ApiDigest`, and `value` decides what to do
+with it. `it.short` is a hash of the API shape; `it.modelHash` is the whole SHA-256; `it.contract`
+is the plain-text projection the hash is over, so a project that wants a different digest entirely
+can hash that instead. The generator deliberately contributes no version of its own: it would have
+to read one from a resource this library then had to mandate, and your build file already knows
+which generator you depend on. Fold that in yourself — it is worth doing, because an emitter change
+can move the emitted file without moving the contract, and a hash over the contract cannot see it.
+
+Nothing in the build script reaches the generator by itself, since the configuration is ordinary
+Kotlin. A `JavaExec` task is the seam:
+
+```kotlin
+tasks.register<JavaExec>("generateApiClient") {
+    // …
+    systemProperty("myapp.version", project.version.toString())
+}
+```
+
+**What moves the hash.** Anything a consumer writes code against: an endpoint, a wire name, a type,
+whether a field may be absent, how a scalar is spelled. Not `header`, and not `runtimeImport` — a
+vendored copy commonly rewrites the import on the way in, and a stamp that moved on that would
+report every such copy as a different client. Everything is sorted before hashing, so reordering a
+resource does not move it either.
+
+**The server end is yours too**, and the generator emits no code for it. `writeStampTo` writes the
+same composed value onto the backend's classpath, so the server carries the stamp rather than
+deriving one:
+
+```kotlin
+generator.writeTo(clientFile)
+generator.writeStampTo(File("src/main/resources/api-stamp.txt"))
+```
+
+From there it is an endpoint a consumer's CI can call, or a filter that reads the request header —
+both a few lines you write, against a value you can decompose because you minted it. If a resource
+reads the stamp with `@HeaderParam`, add the name to `ambientHeaders`: the client sets that header
+and the caller never does, which is exactly what that option is for.
+
+**It reports; it does not refuse.** Two stamps differing does not mean the client is broken — most
+backend changes are additive, and a client generated before one usually still works. Answering "is
+this compatible" needs a compatibility model rather than a hash comparison, so nothing here refuses
+on a mismatch, on either end.
 
 ## Untyped payloads
 

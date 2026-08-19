@@ -1,5 +1,6 @@
 package dk.lldata.tsclientgen
 
+import dk.lldata.tsclientgen.emit.ContractDigest
 import dk.lldata.tsclientgen.emit.TemporalModuleEmitter
 import dk.lldata.tsclientgen.emit.TypeScriptClientEmitter
 import dk.lldata.tsclientgen.emit.TypeScriptTypes
@@ -41,6 +42,24 @@ class ClientGenerator(
 
     /** The contract rules, over this generator's model. */
     fun lint(): ApiContractLint = ApiContractLint(model, options)
+
+    /**
+     * The shape of the client this generator emits, as canonical text and a hash of it.
+     *
+     * Available whether or not a stamp is configured, because the hash the generator computes is
+     * not the only one worth having: [ApiDigest.contract] is plain text, so a project that wants a
+     * different digest — a different algorithm, a subset, folded together with something of its own
+     * — has the input rather than only the answer.
+     */
+    val digest: ApiDigest by lazy { ContractDigest(options).of(model.clientSurface) }
+
+    /**
+     * The stamp as [GeneratorOptions.stamp] composes it, or null when no stamp is configured.
+     *
+     * The same value the client carries, because it is the same call over the same digest — which
+     * is what lets the backend compare rather than merely receive.
+     */
+    val stamp: String? get() = options.stamp?.value?.invoke(digest)
 
     /** The client as it should be on disk. */
     fun render(): String {
@@ -106,6 +125,25 @@ class ClientGenerator(
         val roots = TypeScriptClientEmitter.rootTypesOf(model.clientSurface)
         val scalars = TypeScriptTypes(options).reachable(roots).namedScalars
         return TemporalModuleEmitter(options).emit(scalars, clientImport, temporalImport)?.let(formatter::format)
+    }
+
+    /**
+     * Writes [stamp] where the backend can read it, and returns the file — or null when no stamp is
+     * configured, in which case there is no file rather than an empty one.
+     *
+     * This is the half that lets a server answer rather than only be told. The generator writes the
+     * value and nothing else: no endpoint, no filter, no format. What the backend does with it — a
+     * `GET /api/stamp`, a `ContainerRequestFilter` that logs a request carrying a different one — is
+     * the project's code, and the generator has no business guessing at either.
+     *
+     * A trailing newline is written, so read it with `.trim()`: a one-line file that an editor
+     * later ends properly should still compare equal.
+     */
+    fun writeStampTo(target: File): File? {
+        val value = stamp ?: return null
+        target.parentFile?.mkdirs()
+        target.writeText(value + "\n")
+        return target
     }
 
     /**

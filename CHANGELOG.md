@@ -10,6 +10,40 @@ it does, the artifacts are available through `./gradlew publishToMavenLocal` —
 
 ### Added
 
+- **An optional stamp in the emitted client, so a copy of it can tell it is stale.** Inside a
+  repository the drift test is the gate; outside one there was nothing, and a vendored client — a
+  second service that cannot run the generator, because that needs the backend's compiled classes —
+  found out it had drifted when a call failed. `GeneratorOptions.stamp` emits a value the consumer
+  treats as opaque and the server that minted it can decompose:
+
+  ```ts
+  export const API_STAMP: string = "4.2.0.9f3c1a2e";
+  export const API_STAMP_HEADER: string = "x-api-stamp";
+
+  export function createApi(baseConfig: ApiConfig = {}) {
+    const config: ApiConfig = {
+      ...baseConfig,
+      headers: { "x-api-stamp": API_STAMP, ...baseConfig.headers },
+    };
+  ```
+
+  A `const` rather than only a comment, because a comment can be diffed and not sent. The
+  composition is the project's: the generator supplies an `ApiDigest` — a hash over the emitted
+  contract, plus the plain-text projection it hashed — and `StampOptions.value` decides what the
+  string says. The generator contributes no version of its own, which would have meant mandating a
+  version resource for a string the consuming build script can already interpolate. Naming
+  `StampOptions.header` sends it on every call from `createApi`; leaving it null exports the
+  constants and sends nothing, since a default header name would put one this library invented on
+  the wire. `ClientGenerator.writeStampTo` writes the same value onto the backend's classpath, so a
+  server compares rather than merely receives — the endpoint or filter that reads it is a few lines
+  a project writes, and the generator emits neither.
+
+  The hash is over the contract rather than the emitted bytes, so it reports incompatibility rather
+  than churn: a doc comment, a layout decision, or `runtimeImport` being rewritten by a vendoring
+  script leaves it where it was. Nothing refuses on a mismatch, at either end — most backend
+  changes are additive, and "is this compatible" is not a question a hash comparison answers. Off
+  by default. ([#7](https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/issues/7))
+
 - **The contract lint refuses an emitted name that shadows a standard-library global.** An
   exported name that is also a global breaks every file that imports it, and the diagnostic reads
   like a compiler bug — it names the same type on both sides and separates them only by absolute

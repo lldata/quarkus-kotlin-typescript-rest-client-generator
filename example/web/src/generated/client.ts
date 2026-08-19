@@ -6,6 +6,10 @@ import {
   type RequestOptions,
 } from "./client-runtime.js";
 
+export const API_STAMP: string = "ca500faf";
+
+export const API_STAMP_HEADER: string = "x-api-stamp";
+
 export interface WireScalar<Raw, T extends Raw> {
   from: (raw: Raw) => T;
 }
@@ -201,7 +205,11 @@ function shelvesNode(path: string, config: ApiConfig) {
   };
 }
 
-export function createApi(config: ApiConfig = {}) {
+export function createApi(baseConfig: ApiConfig = {}) {
+  const config: ApiConfig = {
+    ...baseConfig,
+    headers: { "x-api-stamp": API_STAMP, ...baseConfig.headers },
+  };
   return {
     get shelves() {
       return shelvesNode("/api/shelves", config);

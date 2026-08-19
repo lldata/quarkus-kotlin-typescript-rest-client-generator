@@ -34,8 +34,6 @@ import dk.lldata.typescriptpoet.dsl.typeArgument
 import dk.lldata.typescriptpoet.dsl.typeParam
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
-import kotlin.reflect.full.memberProperties
-import kotlin.reflect.full.primaryConstructor
 
 /**
  * Writes the TypeScript client for a set of endpoints.
@@ -70,24 +68,21 @@ class TypeScriptClientEmitter(
     private val apiRequest = TypeName.namedImport("apiRequest", options.runtimeImport)
 
     fun emit(endpoints: List<Endpoint>): String {
-        val requestBodyTypes = endpoints.mapNotNull { it.body?.type }
-        val reachable = types.reachable(rootTypesOf(endpoints))
-        val dtos = reachable.dtos
-        val requestDtos = types.reachableDtos(requestBodyTypes).toSet()
-
-        val discriminators = mutableMapOf<KClass<*>, Pair<String, String>>()
-        for (dto in dtos.filter { types.isSealedUnion(it) }) {
-            val property = types.unionDiscriminatorProperty(dto)
-            for ((variant, literal) in types.unionVariants(dto)) {
-                discriminators[variant] = property to literal
-            }
-        }
+        val surface = DeclaredSurface(types, endpoints)
+        val reachable = surface.reachable
+        val dtos = surface.dtos
+        // Composed here rather than handed in, so that anything holding an emitter emits the file
+        // its own stamp describes. The digest is over these endpoints, which is what it claims.
+        val stamp = options.stamp?.let { it.value(ContractDigest(options).of(endpoints)) }
 
         for (endpoint in endpoints) refuseUnsupportedParams(endpoint)
 
         val spec =
             file("client") {
                 addComment(options.header)
+                // Ahead of every declaration, because it is the one line a consumer's CI check or
+                // sync script has to find, and the rest of the file is bulk it scrolls past.
+                stamp?.let { stampConstants(it) }
                 // First, because everything below may refer to one and nothing here refers back.
                 companionInterfaces(reachable.namedScalars.filterIsInstance<Scalar.Branded>())
                 for (scalar in reachable.namedScalars) {
@@ -106,7 +101,7 @@ class TypeScriptClientEmitter(
                         // The base is its variants: emitting the base alone describes none of them.
                         types.isSealedUnion(dto) ->
                             type(dto.simpleName!!, TypeName.unionType(*variantNames(dto)), Modifier.EXPORT)
-                        else -> dtoInterface(dto, dto in requestDtos, discriminators[dto])
+                        else -> dtoInterface(surface, dto)
                     }
                 }
                 for (node in ApiNode.of(endpoints, options.rootPath).descendants()) nodeFactory(node)
@@ -233,35 +228,32 @@ class TypeScriptClientEmitter(
             .toTypedArray()
 
     private fun FileSpec.Builder.dtoInterface(
+        surface: DeclaredSurface,
         dto: KClass<*>,
-        isRequest: Boolean,
-        discriminator: Pair<String, String>?,
     ) = interfaze(dto.simpleName!!, Modifier.EXPORT) {
-        types.refuseNamingStrategy(dto)
-        // Declaration order, not alphabetical: the Kotlin constructor is the readable order.
-        val order = dto.primaryConstructorParameterNames()
-        for (member in dto.memberProperties
-            .sortedBy { order.indexOf(it.name).takeIf { i -> i >= 0 } ?: Int.MAX_VALUE }
-            .filterNot { types.isIgnored(dto, it) }) {
-            // What the JSON calls it, which `@JsonProperty` can make different from what Kotlin
-            // calls it. The Kotlin name is still the right key for asking Kotlin questions — see
-            // `isOptionalRequestField` below, which looks the constructor parameter up by it.
-            val name = types.wireName(dto, member)
-            val type =
-                if (name == discriminator?.first) {
-                    // The variant fixes this to one literal, which is what makes the union
-                    // narrowable: `if (result.outcome === "refused")` tells TypeScript which arm.
-                    TypeName.literal(discriminator.second)
-                } else {
-                    types.nullableTypeOf(member.returnType)
-                }
-            val isOptional =
-                if (isRequest) {
-                    types.isOptionalRequestField(dto, member.name)
-                } else {
-                    types.isOptionalResponseField(dto, member.returnType)
-                }
-            if (isOptional) optional(name, type) else property(name, type)
+        for (member in surface.membersOf(dto)) {
+            if (member.optional) optional(member.name, member.type) else property(member.name, member.type)
+        }
+    }
+
+    /**
+     * ```ts
+     * export const API_STAMP: string = "1.0.0-alpha4.9f3c1a2e";
+     * export const API_STAMP_HEADER: string = "x-api-stamp";
+     * ```
+     *
+     * Typed `string` rather than left to infer, which would give each the literal type of its own
+     * value — so `serverStamp === API_STAMP` would read as a comparison TypeScript can already
+     * settle, and the only use anyone has for these is comparing them with something else.
+     *
+     * The names are fixed rather than configurable. They are the half of the protocol a consumer
+     * and a server agree on without being able to ask, and a project that renamed them would have
+     * nothing left to point its CI check at.
+     */
+    private fun FileSpec.Builder.stampConstants(stamp: String) {
+        property("API_STAMP", TypeName.STRING, Modifier.EXPORT, Modifier.CONST) { initializer("%S", stamp) }
+        options.stamp?.header?.let { header ->
+            property("API_STAMP_HEADER", TypeName.STRING, Modifier.EXPORT, Modifier.CONST) { initializer("%S", header) }
         }
     }
 
@@ -272,16 +264,51 @@ class TypeScriptClientEmitter(
     private fun FileSpec.Builder.nodeFactory(node: ApiNode) {
         val isRoot = node.trail.isEmpty()
         val modifiers = if (isRoot) arrayOf(Modifier.EXPORT) else emptyArray()
+        // Only the root sends it, and only once: every node below closes over the config it is
+        // handed, so folding the header in here puts it on every call without touching a leaf.
+        val stampHeader = options.stamp?.header?.takeIf { isRoot }
         function(node.factoryName(), *modifiers) {
             if (isRoot) {
-                parameter("config", apiConfig) { defaultValue("{}") }
+                // Renamed only when there is something to merge, so an unstamped client is
+                // byte-identical to what it was. `const config` cannot shadow a parameter of the
+                // same name, and `config` is the name every node below already passes along — so
+                // it is the parameter that gives way rather than the hundred call sites.
+                parameter(if (stampHeader != null) "baseConfig" else "config", apiConfig) { defaultValue("{}") }
             } else {
                 parameter("path", TypeName.STRING)
                 parameter("config", apiConfig)
             }
-            body { statement("return %L", nodeObject(node, isRoot)) }
+            body {
+                stampHeader?.let { statement("const config: %T = %L", apiConfig, stampedConfig(it)) }
+                statement("return %L", nodeObject(node, isRoot))
+            }
         }
     }
+
+    /**
+     * ```ts
+     * { ...baseConfig, headers: { "x-api-stamp": API_STAMP, ...baseConfig.headers } }
+     * ```
+     *
+     * The caller's own headers spread last, so they win. That is not a preference — the runtime
+     * already spreads a per-call `options.headers` over `config.headers`, and a config-level
+     * override that lost while a per-call one won would be a rule nobody could keep in their head.
+     *
+     * The two spreads go in as shorthand members because the writer has no notion of a spread. It
+     * lays them out correctly, since it only needs to see member boundaries to break on them, but
+     * modelling `...x` belongs in TypeScriptPoet rather than here.
+     */
+    private fun stampedConfig(header: String): ObjectLiteral =
+        obj {
+            shorthand("...baseConfig")
+            property(
+                "headers",
+                obj {
+                    property(TypeScriptNames.member(header), "%L", "API_STAMP")
+                    shorthand("...baseConfig.headers")
+                },
+            )
+        }
 
     /** The tree itself: literal segments are getters, so a branch is built only when it is reached. */
     private fun nodeObject(
@@ -406,12 +433,6 @@ class TypeScriptClientEmitter(
                 if (param.optional) optionalMember(name, type, tsDoc) else member(name, type, tsDoc)
             },
         )
-
-    private fun KClass<*>.primaryConstructorParameterNames(): List<String> =
-        primaryConstructor
-            ?.parameters
-            ?.mapNotNull { it.name }
-            .orEmpty()
 
     /**
      * Params the client neither sends nor knows about, as opposed to ones the emitter simply cannot

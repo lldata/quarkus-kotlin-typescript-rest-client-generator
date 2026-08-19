@@ -11,5 +11,6 @@ fun main() {
     generator.writeRuntimeTo(ExampleClient.runtimeFile)
     generator.writeTo(ExampleClient.clientFile)
     generator.writeTemporalTo(ExampleClient.temporalFile, clientImport = "./client.js")
+    generator.writeStampTo(ExampleClient.stampFile)
     println("Wrote ${ExampleClient.clientFile.parentFile.list()?.sorted()?.joinToString(", ")} to ${ExampleClient.clientFile.parent}")
 }

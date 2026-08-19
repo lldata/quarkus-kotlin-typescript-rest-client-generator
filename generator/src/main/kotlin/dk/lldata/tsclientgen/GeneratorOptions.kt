@@ -32,6 +32,14 @@ data class GeneratorOptions(
     /** The comment at the top of the emitted file. Say how to regenerate it. */
     val header: String = DEFAULT_HEADER,
     /**
+     * Provenance the emitted client carries — see [StampOptions]. Null, and nothing is emitted.
+     *
+     * Off by default because it has a cost worth choosing deliberately: with a stamp, every change
+     * to the API shape moves a line in the committed client. That is the whole point, and it is
+     * still a project's decision rather than something an upgrade should start doing to its diffs.
+     */
+    val stamp: StampOptions? = null,
+    /**
      * Name for a module-level client built with no config, or null for none.
      *
      * Convenient in a browser, where the session cookie is the credential and there is one user per
