@@ -1,0 +1,53 @@
+# The generator is pinned against a `dk.lldata:typescriptpoet` alpha, and half the build gate is
+# `tsc` in the example — so both the writer that decides emitted layout and the compiler that
+# judges it move underneath this project between releases. Dependabot makes that a series of small
+# reviewable pull requests rather than something discovered when a bump finally breaks.
+#
+# Which of these the agent may merge, and which are a human's, is in AGENTS.md under Merging.
+version: 2
+
+updates:
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Gradle is read per directory rather than per project, so every module with its own build
+  # script needs naming; the root holds the publishing plugins.
+  - package-ecosystem: gradle
+    directories:
+      - "/"
+      - "/generator"
+      - "/annotations"
+      - "/example/backend"
+    schedule:
+      interval: monthly
+    # `dk.lldata:typescriptpoet` is deliberately in no group, so it arrives alone and its
+    # emitted diff can be read: it is the writer that decides how the client is laid out, and a
+    # bump can change the output. AGENTS.md never lets an emitted change merge unread.
+    groups:
+      # Kotlin and Dokka move together; one pull request a month rather than several.
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "org.jetbrains.dokka*"
+      test:
+        patterns:
+          - "org.junit*"
+          - "io.kotest*"
+      # The example's stack, which is not published and moves on its own cadence.
+      quarkus:
+        patterns:
+          - "io.quarkus*"
+          - "io.rest-assured*"
+
+  # The example's page and the client it is written against. `tsc` here is the only thing that
+  # proves the emitted TypeScript compiles, so its version is part of the gate.
+  - package-ecosystem: npm
+    directory: "/example/web"
+    schedule:
+      interval: monthly

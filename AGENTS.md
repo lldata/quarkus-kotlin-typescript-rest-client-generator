@@ -221,7 +221,9 @@ about, because merging reaches people.
 Merge only when every one of these holds:
 
 - **The build is green** — the `CI` workflow, both halves. Green, not pending, and not merely
-  "not failing". A check that was cancelled or skipped is not a pass.
+  "not failing". A check that was cancelled or skipped is not a pass. Qodana reports alongside it
+  and is deliberately not a required check while its profile is untuned here: read it before
+  merging, and treat a finding as something to decide about rather than as a blocker.
 - **The author is the agent itself or a trusted author.** Green CI is not consent to take an
   outside contribution; that is a human's decision about someone else's code and licence.
 - **The change carries its evidence** — a test that fails without it, and a changelog entry in
@@ -262,6 +264,44 @@ Never merge, however green:
 Prefer auto-merge to merging by hand: enable it when opening the pull request, so the merge waits
 on the checks rather than on the agent still being around to watch them. Squash by default — a
 pull request here is one logical change, and `main` reads better as one commit per change.
+
+### Dependency bumps from Dependabot
+
+Dependabot opens pull requests that nobody currently reviews or merges: `dependabot[bot]` is not a
+trusted author, and the review workflow's `allowed_bots` list does not name it, so those pull
+requests get neither an inline review nor a path to merge and simply pile up.
+
+Reviewing them is a one-line change to `.github/workflows/agent-review.yml` — add
+`dependabot[bot]` to the existing `allowed_bots: "claude"` input, comma-separated. That line lives
+in `.github/workflows/`, which makes it the release path in the sense this file already means, so
+it is described here for a human to apply rather than made by the agent.
+
+Merging one is narrower than "the author is the agent itself or a trusted author" was written for,
+since neither describes a bot. Treat a Dependabot pull request as the agent's to merge only when,
+in addition to the ordinary conditions above, all of the following hold:
+
+- **It is the `gradle` ecosystem's `kotlin` or `test` group, or an ungrouped `gradle` bump that
+  only touches a `testImplementation`/`testRuntimeOnly` dependency.** Never the `github-actions`
+  group: those pull requests touch `.github/workflows/`, already covered by "anything that changes
+  the rules or the release path" above. Never `dk.lldata:typescriptpoet`, which is ungrouped
+  precisely so it arrives alone — it decides how the client is laid out, so its bumps are emitted
+  changes by default and are read, not merged. The `quarkus` and `npm` entries are the example's,
+  and the example is the integration test: a bump there is the agent's only if the committed client
+  is untouched and both halves of the gate are green. A bump that does not obviously fit one of
+  these is not the agent's either; leave it rather than guessing.
+- **The diff leaves the compatibility floors alone.** Each published module pins `jvmTarget`,
+  `apiVersion`, `languageVersion` and `-Xjdk-release=17` as literal values, independent of the
+  plugin version Dependabot bumps, so an ordinary Kotlin or Dokka bump does not move them — check
+  the diff for those lines rather than assuming it. A bump that does move one is a floor change and
+  is never the agent's to merge, whatever the build says.
+- **The emitted output is unchanged.** There is no ABI check here, so the drift test is what would
+  notice a toolchain bump that changed what the generator writes. A green drift test is the
+  evidence; a red one means the bump is an emitted change and belongs to a human.
+
+A qualifying bump does not need a `CHANGELOG.md` entry — nothing about it is visible to someone
+consuming the library, and the changelog is for them. A bump that changes observable behaviour is
+judged on what it actually does, the same as any other change, not on which group opened the pull
+request.
 
 
 ## Changelog
