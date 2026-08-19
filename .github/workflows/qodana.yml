@@ -28,6 +28,9 @@ jobs:
       contents: read
       pull-requests: write
       security-events: write
+      # Without this the action truncates its report to ten problems per level and says so in
+      # the log, which is how this was found. The scan is only useful if it shows everything.
+      checks: write
 
     steps:
 
