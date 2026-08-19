@@ -49,7 +49,15 @@ class TemporalModuleEmitter(
         // `namedImport` rather than a hand-written statement, so Poet collects these into one
         // import at the top of the file. `addCode` appends at the end, where an import is legal and
         // reads like a mistake.
-        val imported = convertible.associateWith { TypeName.namedImport(it.reference, clientImport) }
+        //
+        // A branded scalar is imported as a value, because `fromTemporal` calls its companion. A
+        // named one is a bare alias with nothing to call, so it appears here only in a type
+        // position and is imported `typeOnly` — otherwise `verbatimModuleSyntax` rejects it and a
+        // type-stripping runtime looks for an export that was never emitted.
+        val imported =
+            convertible.associateWith {
+                TypeName.namedImport(it.reference, clientImport, typeOnly = it !is Scalar.Branded)
+            }
 
         // Where `Temporal` itself comes from. Null means the global, which is declared by
         // TypeScript's own `lib.esnext.temporal.d.ts` — present in 7.0, absent in 5.9. A project on

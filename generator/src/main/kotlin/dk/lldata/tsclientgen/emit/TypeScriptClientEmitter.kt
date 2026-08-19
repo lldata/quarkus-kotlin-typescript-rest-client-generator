@@ -55,9 +55,18 @@ class TypeScriptClientEmitter(
 ) {
     private val types = TypeScriptTypes(options)
 
-    /** `namedImport` rather than `implicit`, so Poet collects these into the import statement. */
-    private val apiConfig = TypeName.namedImport("ApiConfig", options.runtimeImport)
-    private val requestOptions = TypeName.namedImport("RequestOptions", options.runtimeImport)
+    /**
+     * `namedImport` rather than `implicit`, so Poet collects these into the import statement.
+     *
+     * The two shapes are imported `typeOnly`, because they are types and two ordinary consumer
+     * setups can tell. Under `verbatimModuleSyntax` the import is emitted as written, so a value
+     * import of a type is an error (TS1484); under a runtime that *strips* types rather than
+     * compiling them — `node --experimental-strip-types` — the binding survives to run time and
+     * the module has no such export. Everything else is unaffected: both forms erase to the same
+     * JavaScript.
+     */
+    private val apiConfig = TypeName.namedImport("ApiConfig", options.runtimeImport, typeOnly = true)
+    private val requestOptions = TypeName.namedImport("RequestOptions", options.runtimeImport, typeOnly = true)
     private val apiRequest = TypeName.namedImport("apiRequest", options.runtimeImport)
 
     fun emit(endpoints: List<Endpoint>): String {

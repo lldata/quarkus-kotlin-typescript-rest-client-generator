@@ -6,6 +6,8 @@ plugins {
 
 repositories {
     mavenCentral()
+    // TypeScriptPoet's unreleased commits, built on demand. See the dependency below.
+    maven("https://jitpack.io")
 }
 
 dependencies {
@@ -14,7 +16,12 @@ dependencies {
     // The TypeScript writer. A fork of outfoxx/typescriptpoet, which stopped at 1.1.2 in 2021 —
     // this adds the Kotlin DSL, the object-literal getter a lazy call tree is made of, and a writer
     // that breaks a call's argument list on width.
-    api("dk.lldata:typescriptpoet:2.0.0-alpha10")
+    // Pinned to a commit rather than a release: the import-wrapping fix this emitter's type-only
+    // imports need landed the morning after alpha10 was tagged, and 2.0.0 is close enough that
+    // cutting an alpha11 for one line of layout is the wrong trade. JitPack builds the commit on
+    // demand — the group is the repository's, `com.github.lldata`, and goes back to `dk.lldata`
+    // with the next release. Pinned, not `main-SNAPSHOT`, so a build here is reproducible.
+    api("com.github.lldata:typescriptpoet:9a1a0e7")
     api(kotlin("reflect"))
 
     // Read from the consumer's classes, never loaded by this library on its own: whichever versions
