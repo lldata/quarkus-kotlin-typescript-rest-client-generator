@@ -1,5 +1,13 @@
-package dk.lldata.tsclientgen.example
+package dk.lldata.tsclientgen.example.api
 
+import dk.lldata.tsclientgen.example.domain.Book
+import dk.lldata.tsclientgen.example.domain.BookSearch
+import dk.lldata.tsclientgen.example.domain.CatalogueFailure
+import dk.lldata.tsclientgen.example.domain.Condition
+import dk.lldata.tsclientgen.example.domain.Isbn
+import dk.lldata.tsclientgen.example.domain.Shelf
+import dk.lldata.tsclientgen.example.domain.ShelfSlug
+import dk.lldata.tsclientgen.example.domain.SortField
 import jakarta.enterprise.context.ApplicationScoped
 import java.time.Instant
 import java.time.temporal.ChronoUnit

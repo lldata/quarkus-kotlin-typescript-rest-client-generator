@@ -1,4 +1,4 @@
-package dk.lldata.tsclientgen.example
+package dk.lldata.tsclientgen.example.api.stamp
 
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe

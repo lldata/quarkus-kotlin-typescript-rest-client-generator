@@ -1,4 +1,4 @@
-package dk.lldata.tsclientgen.example
+package dk.lldata.tsclientgen.example.api.stamp
 
 import jakarta.ws.rs.container.ContainerRequestContext
 import jakarta.ws.rs.container.ContainerRequestFilter

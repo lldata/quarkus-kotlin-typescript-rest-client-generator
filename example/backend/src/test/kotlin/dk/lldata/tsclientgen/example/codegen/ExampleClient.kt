@@ -4,7 +4,7 @@ import dk.lldata.tsclientgen.ClientGenerator
 import dk.lldata.tsclientgen.GeneratorOptions
 import dk.lldata.tsclientgen.ScalarStyle
 import dk.lldata.tsclientgen.StampOptions
-import dk.lldata.tsclientgen.example.ApiStamp
+import dk.lldata.tsclientgen.example.api.stamp.ApiStamp
 import java.io.File
 
 /**
@@ -17,6 +17,9 @@ import java.io.File
 object ExampleClient {
     private val options =
         GeneratorOptions(
+            // A prefix, not an exact package: the payload types are spread across `.api` and
+            // `.domain` below this, and one entry covers both. Naming them separately would work
+            // too — it is a list — and would be the way to keep a package out of the client.
             dtoPackages = listOf("dk.lldata.tsclientgen.example"),
             // The example opts into the strongest of the three: `Instant` is branded, and the page
             // converts it with the emitted Temporal module. The brand costs nothing here — the page

@@ -1,5 +1,6 @@
-package dk.lldata.tsclientgen.example
+package dk.lldata.tsclientgen.example.api
 
+import dk.lldata.tsclientgen.example.domain.CatalogueFailure
 import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.ext.ExceptionMapper
 import jakarta.ws.rs.ext.Provider

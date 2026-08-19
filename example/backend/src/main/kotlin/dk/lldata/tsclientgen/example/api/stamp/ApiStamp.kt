@@ -1,4 +1,4 @@
-package dk.lldata.tsclientgen.example
+package dk.lldata.tsclientgen.example.api.stamp
 
 /**
  * The stamp this backend was built at, and the header a generated client sends its own in.

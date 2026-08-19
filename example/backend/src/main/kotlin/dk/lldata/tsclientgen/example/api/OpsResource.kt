@@ -1,4 +1,4 @@
-package dk.lldata.tsclientgen.example
+package dk.lldata.tsclientgen.example.api
 
 import jakarta.ws.rs.GET
 import jakarta.ws.rs.Path

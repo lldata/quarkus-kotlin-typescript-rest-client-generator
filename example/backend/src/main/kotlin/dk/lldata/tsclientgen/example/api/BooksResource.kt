@@ -1,6 +1,9 @@
-package dk.lldata.tsclientgen.example
+package dk.lldata.tsclientgen.example.api
 
 import dk.lldata.tsclientgen.TypeScriptApi
+import dk.lldata.tsclientgen.example.domain.BookSearch
+import dk.lldata.tsclientgen.example.domain.Condition
+import dk.lldata.tsclientgen.example.domain.SortField
 import jakarta.ws.rs.BeanParam
 import jakarta.ws.rs.Consumes
 import jakarta.ws.rs.CookieParam

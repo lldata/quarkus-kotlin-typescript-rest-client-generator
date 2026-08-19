@@ -1,4 +1,4 @@
-package dk.lldata.tsclientgen.example
+package dk.lldata.tsclientgen.example.api.stamp
 
 import io.quarkus.test.junit.QuarkusTest
 import io.restassured.RestAssured.given
