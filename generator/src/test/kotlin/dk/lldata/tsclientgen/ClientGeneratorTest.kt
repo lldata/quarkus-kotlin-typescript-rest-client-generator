@@ -51,6 +51,31 @@ class ClientGeneratorTest {
         drift shouldContain "regenerated: export type Isbn = string;"
     }
 
+    /**
+     * The half that lets the server compare rather than only receive: the same composed value the
+     * client carries, written where the backend can read it.
+     */
+    @Test
+    fun `writes the stamp for the backend, and nothing when none is configured`() {
+        val stamped = ClientGenerator(testOptions.copy(stamp = StampOptions(value = { it.short }))) { fixtureModel() }
+
+        val written = stamped.writeStampTo(File(target, "resources/api-stamp.txt"))!!
+
+        written.readText().trim() shouldBe stamped.digest.short
+        written.readText().trim() shouldBe stamped.stamp
+        generator().writeStampTo(File(target, "never.txt")).shouldBeNull()
+    }
+
+    /** Available whether or not a stamp is emitted, because it is the input to a project's own. */
+    @Test
+    fun `exposes the digest without a stamp being configured`() {
+        val generator = generator()
+
+        generator.stamp.shouldBeNull()
+        generator.digest.contract shouldContain "root /api"
+        generator.digest.modelHash.length shouldBe 64
+    }
+
     @Test
     fun `reports a missing file as drift rather than throwing`() {
         generator().driftAgainst(File(target, "never-written.ts"))!! shouldContain "is missing"

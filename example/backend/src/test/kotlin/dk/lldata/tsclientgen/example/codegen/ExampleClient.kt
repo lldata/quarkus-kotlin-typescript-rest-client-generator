@@ -3,6 +3,8 @@ package dk.lldata.tsclientgen.example.codegen
 import dk.lldata.tsclientgen.ClientGenerator
 import dk.lldata.tsclientgen.GeneratorOptions
 import dk.lldata.tsclientgen.ScalarStyle
+import dk.lldata.tsclientgen.StampOptions
+import dk.lldata.tsclientgen.example.ApiStamp
 import java.io.File
 
 /**
@@ -30,6 +32,15 @@ object ExampleClient {
             header =
                 "Generated from the Kotlin resources. Do not edit: fix the resources, or\n" +
                     "the generator, and re-run `./gradlew :example:backend:generateApiClient`.",
+            // The hash the generator computes from the API shape, and nothing else. A version or a
+            // git revision is the emitting project's to fold in — see `ApiDigest` — and folding one
+            // in here would tie this committed client to the release that emitted it, so cutting a
+            // version would fail the drift test until someone regenerated a file nothing had
+            // changed in.
+            // The header name comes from the application rather than being declared here: it is
+            // `ApiStampFilter` that has to agree with the emitted client, and one spelling of it is
+            // the only way they cannot drift apart.
+            stamp = StampOptions(value = { it.short }, header = ApiStamp.HEADER),
         )
 
     /** Where the web app keeps its generated sources. All three are committed. */
@@ -38,6 +49,13 @@ object ExampleClient {
     val clientFile: File = File(generatedDir, "client.ts")
     val runtimeFile: File = File(generatedDir, "client-runtime.ts")
     val temporalFile: File = File(generatedDir, "client-temporal.ts")
+
+    /**
+     * The same stamp the client carries, on the backend's classpath — which is what lets the server
+     * compare rather than only receive the header. Written by the generator, read by the
+     * application; the generator emits no code for either end.
+     */
+    val stampFile: File = File(repoRoot(), "example/backend/src/main/resources/api-stamp.txt")
 
     /**
      * The compiled resources the model is read from.
