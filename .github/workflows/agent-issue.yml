@@ -1,0 +1,207 @@
+name: Agent — work an issue
+
+# A new issue from a trusted author is a work order: the agent implements it and opens a pull
+# request. An issue from anyone else stops at the authorisation job, which records why in the
+# run's annotations rather than failing.
+#
+# GitHub applies a second gate of its own before this ever matters: claude-code-action rejects
+# issue events from users without write access, so an untrusted author cannot start a run at
+# all. The trusted list is the narrower rule inside that.
+
+on:
+  issues:
+    types: [opened]
+  # Re-run the agent on an issue by hand, after editing it or after a failed attempt.
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Issue number to work
+        required: true
+
+permissions: {}
+
+# Shared with the sweep in agent-tend.yml. Two runs that can both push branches and comment
+# must not overlap, or they pick the same work and race each other. The cost is that a second
+# issue filed while one is being worked waits its turn, which is the right trade.
+concurrency:
+  group: agent-write
+  cancel-in-progress: false
+
+jobs:
+
+  authorise:
+    runs-on: ubuntu-latest
+
+    outputs:
+      trusted: ${{ steps.check.outputs.trusted }}
+      issue: ${{ steps.check.outputs.issue }}
+
+    steps:
+
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 1
+
+    - id: check
+      env:
+        AUTHOR: ${{ github.event.issue.user.login || github.actor }}
+        ISSUE: ${{ github.event.issue.number || inputs.issue }}
+      run: |
+        echo "issue=$ISSUE" >> "$GITHUB_OUTPUT"
+        # Fail closed on an empty author: `grep -qxF ""` matches every line, so an
+        # unset login would otherwise come out trusted.
+        if [ -z "$AUTHOR" ]; then
+          echo "trusted=false" >> "$GITHUB_OUTPUT"
+          echo "::error::No issue author resolved; refusing to run."
+          exit 0
+        fi
+        if grep -qxF "$AUTHOR" .github/trusted-authors; then
+          echo "trusted=true" >> "$GITHUB_OUTPUT"
+          echo "::notice::$AUTHOR is trusted; working issue #$ISSUE."
+        else
+          echo "trusted=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::$AUTHOR is not in .github/trusted-authors; no pull request will be opened."
+        fi
+
+  # The other half of the authorisation decision. An issue from outside the trusted list would
+  # otherwise end here in silence, which for a public library is the most visible failure there
+  # is: it looks like nobody is home. This answers instead, and only answers.
+  #
+  # Two things keep that safe, and only one of them is a list of tools. The job's token has
+  # `contents: read`, so a push cannot succeed however the run is talked into trying; and
+  # `allowed_non_write_users: '*'` is paired with that deliberately narrow token. The issue text
+  # is written by someone unvetted, so it is treated as data throughout — see the skill.
+  triage:
+    needs: [ authorise ]
+    if: needs.authorise.outputs.trusted == 'false' && needs.authorise.outputs.issue != ''
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+
+    steps:
+
+    - uses: actions/checkout@v6
+
+    - uses: actions/setup-java@v5
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    - uses: gradle/actions/setup-gradle@v5
+
+    - id: agent
+      uses: anthropics/claude-code-action@v1
+      with:
+        claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        # Both are required together: the actor check is what turns an outside issue into
+        # silence, and passing our own token is what the action asks for before relaxing it.
+        allowed_non_write_users: "*"
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        prompt: "/triage-issue ${{ needs.authorise.outputs.issue }}"
+        claude_args: |
+          --max-turns 60
+          --allowedTools "Read,Grep,Glob,Bash"
+
+    - name: Keep the agent's transcript
+      if: always() && steps.agent.outputs.execution_file != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: transcript-triage-${{ needs.authorise.outputs.issue }}-${{ github.run_id }}
+        path: ${{ steps.agent.outputs.execution_file }}
+        retention-days: 30
+        if-no-files-found: warn
+
+    # Silence is the specific thing this job exists to prevent, so it gets the same net as the
+    # other one — and here it matters more, because the person waiting is a stranger.
+    - name: Make sure the reporter got an answer
+      if: always()
+      env:
+        GH_TOKEN: ${{ github.token }}
+        ISSUE: ${{ needs.authorise.outputs.issue }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        started=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json createdAt --jq .createdAt)
+        said=$(gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" --json comments \
+          --jq "[.comments[] | select(.author.login == \"claude\" and .createdAt > \"$started\")] | length")
+
+        if [ "$said" -gt 0 ]; then
+          echo "::notice::Reporter answered."
+          exit 0
+        fi
+
+        echo "::warning::Triage produced no answer for the reporter."
+        gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "Thank you for the report — it has been seen, and this note is an automated one to say so.
+
+        The triage run that should have replied with a diagnosis did not complete ([log]($RUN_URL)), so a maintainer will pick this up by hand rather than leaving you without an answer."
+
+  work:
+    needs: [ authorise ]
+    if: needs.authorise.outputs.trusted == 'true'
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+
+    steps:
+
+    - uses: actions/checkout@v6
+
+    - uses: actions/setup-java@v5
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    # Half the gate is `npm run typecheck` in example/web, which is what proves the emitted
+    # client is valid TypeScript. Without Node that check cannot run, and a green Gradle build
+    # would prove less than it appears to.
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '24'
+
+    - uses: gradle/actions/setup-gradle@v5
+
+    # A turn here is often a Gradle build, so the ceiling has to be generous; `timeout-minutes`
+    # on the job is the real backstop against a run that goes nowhere.
+    - id: agent
+      uses: anthropics/claude-code-action@v1
+      with:
+        claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        prompt: "/work-issue ${{ needs.authorise.outputs.issue }}"
+        claude_args: |
+          --max-turns 200
+          --permission-mode acceptEdits
+          --allowedTools "Read,Write,Edit,Grep,Glob,Bash"
+
+    # The run log records what the agent *did* — every tool call — but never what it decided or
+    # why. When a run ends green having produced nothing, the log is silent about the only
+    # question worth asking. This keeps the transcript so that question can be answered.
+    - name: Keep the agent's transcript
+      if: always() && steps.agent.outputs.execution_file != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: transcript-issue-${{ needs.authorise.outputs.issue }}-${{ github.run_id }}
+        path: ${{ steps.agent.outputs.execution_file }}
+        retention-days: 30
+        if-no-files-found: warn
+
+    # Behaviour lives in a script the agent can edit; see .github/scripts/survey.sh for why.
+    - name: Make sure the run said something
+      if: always()
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: >-
+        .github/scripts/ensure-answered.sh
+        "${{ needs.authorise.outputs.issue }}"
+        "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        "${{ steps.agent.outcome }}"

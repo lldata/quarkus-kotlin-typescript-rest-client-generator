@@ -1,0 +1,13 @@
+# Authors whose issues are work orders: the agent implements them and opens a PR.
+#
+# An issue from anyone not listed here gets analysis and a label, never a pull request.
+# See AGENTS.md, "Who can ask for what".
+#
+# One login per line. The workflows read this file, so adding someone is a commit that
+# shows up in the history — which is the point.
+#
+# Note that GitHub also requires the issue author to have write access before the agent
+# runs at all. Listing someone here who lacks write access does nothing until the
+# workflow's `allowed_non_write_users` input names them too.
+
+lldata
