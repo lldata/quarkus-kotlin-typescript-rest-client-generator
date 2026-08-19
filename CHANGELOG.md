@@ -89,11 +89,17 @@ it does, the artifacts are available through `./gradlew publishToMavenLocal` —
 ### Changed
 
 - **The example's backend is split into `api`, `api.stamp` and `domain`**, which it had outgrown as
-  one flat package. It also demonstrates two things a single package could not: that `dtoPackages`
-  is a prefix covering everything below it, and that the emitted client and its stamp are unmoved
-  by a reorganisation of the Kotlin they were read from — the digest is over the contract, not over
-  package structure. `Catalogue` sits in `api` rather than `domain`, because it returns the
-  response payloads; putting it under `domain` would have had the model importing the HTTP layer.
+  one flat package. The line falls where the example already drew it: `api` holds the things that
+  know about HTTP — the resources, the `@QueryParam` holder, the mapper deciding which status a
+  failure is worth, the stamp filter — and `domain` holds the data and the catalogue. The
+  request and response types are in `domain` with everything else, because none of them is
+  HTTP-shaped: no status, no headers, no cookies, and a refused loan is a 200 the client narrows
+  on a field. Returning a domain type straight from a resource stays a normal thing to do, which
+  `GET /api/shelves` has always done.
+
+  It also shows two things one package could not: `dtoPackages` is a prefix, covering a package
+  below the one named; and neither the emitted client nor its stamp moved, because the digest is
+  over the contract and Kotlin package structure is not part of it.
 
 - **The scalar guard's argument is broken across lines**, so the emitted output is a Prettier
   fixed point rather than something Prettier would reformat on contact.

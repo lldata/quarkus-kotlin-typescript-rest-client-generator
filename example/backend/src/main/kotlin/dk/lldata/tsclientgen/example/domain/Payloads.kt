@@ -1,12 +1,8 @@
-package dk.lldata.tsclientgen.example.api
+package dk.lldata.tsclientgen.example.domain
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
-import dk.lldata.tsclientgen.example.domain.Book
-import dk.lldata.tsclientgen.example.domain.BorrowOutcome
-import dk.lldata.tsclientgen.example.domain.Condition
-import dk.lldata.tsclientgen.example.domain.Isbn
 import java.time.Instant
 
 // The shapes that exist only because a call has to answer with something more than a `Book`. Where

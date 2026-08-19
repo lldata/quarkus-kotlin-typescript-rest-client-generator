@@ -1,7 +1,13 @@
 package dk.lldata.tsclientgen.example.api
 
 import dk.lldata.tsclientgen.TypeScriptApi
+import dk.lldata.tsclientgen.example.domain.AddBookRequest
+import dk.lldata.tsclientgen.example.domain.BookDetailResponse
+import dk.lldata.tsclientgen.example.domain.BookListResponse
 import dk.lldata.tsclientgen.example.domain.BookSearch
+import dk.lldata.tsclientgen.example.domain.BorrowRequest
+import dk.lldata.tsclientgen.example.domain.BorrowResponse
+import dk.lldata.tsclientgen.example.domain.Catalogue
 import dk.lldata.tsclientgen.example.domain.Condition
 import dk.lldata.tsclientgen.example.domain.SortField
 import jakarta.ws.rs.BeanParam
