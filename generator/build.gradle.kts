@@ -26,10 +26,10 @@ dependencies {
 
     // Read from the consumer's classes, never loaded by this library on its own: whichever versions
     // the consuming project compiles against are the ones the annotations are read from.
-    compileOnly("jakarta.ws.rs:jakarta.ws.rs-api:3.1.0")
+    compileOnly("jakarta.ws.rs:jakarta.ws.rs-api:4.0.0")
     compileOnly("com.fasterxml.jackson.core:jackson-annotations:2.17.0")
 
-    testImplementation("jakarta.ws.rs:jakarta.ws.rs-api:3.1.0")
+    testImplementation("jakarta.ws.rs:jakarta.ws.rs-api:4.0.0")
     testImplementation("com.fasterxml.jackson.core:jackson-annotations:2.17.0")
     // Only so a fixture can carry `@JsonNaming`, which lives in databind. The library itself reads
     // it by qualified name and depends on none of this.
