@@ -53,6 +53,18 @@ class TemporalModuleEmitterTest {
     }
 
     /**
+     * A named scalar is a bare alias, so this module only ever names it in a type position and the
+     * import has to say so: `verbatimModuleSyntax` rejects a value import of a type, and a runtime
+     * that strips types rather than compiling them looks for an export that was never emitted. A
+     * branded one is a value here — `fromTemporal` calls its companion — so it must not say `type`.
+     */
+    @Test
+    fun `imports a scalar as a type unless it is called`() {
+        emit(ScalarStyle.Named)!! shouldContain """import { type Instant } from "./client.js";"""
+        emit(ScalarStyle.ValueObject)!! shouldContain """import { Instant } from "./client.js";"""
+    }
+
+    /**
      * `Temporal` is a global only where TypeScript declares one: 7.0 does with `lib: "esnext"`, 5.9
      * does not, and the polyfills export it as a module member rather than declaring a global. So a
      * project on an older TypeScript needs the module to import it, and saying `lib: "esnext"` at

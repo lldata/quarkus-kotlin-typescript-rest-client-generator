@@ -323,7 +323,16 @@ and the parsed body. It is the only file that knows how a request is made.
 
 Replace it whenever the transport carries project policy — an auth refresh, a proxy hop, retries,
 tracing headers. Keep the three exported names (`ApiConfig`, `RequestOptions`, `apiRequest`), point
-`runtimeImport` at your module, and the generated client needs no regeneration.
+`runtimeImport` at your module, and the generated client needs no regeneration. Keep the first two
+*types* while you are at it: the client imports them as `type`, so a replacement that exports them
+as values still works, but one that stops being a type does not.
+
+Every import the client emits says `type` where it means a type, which two ordinary setups need it
+to. Under `verbatimModuleSyntax` the import is emitted as written, so a value import of a type is an
+error; under a runtime that *strips* types rather than compiling them — `node
+--experimental-strip-types`, and the same in Deno and Bun — the binding survives to run time and the
+module has no such export. Both forms erase to the same JavaScript, so a project that does neither
+sees no difference.
 
 Error bodies are deliberately outside the generated types: `ApiError.body` is `unknown`. The client
 types describe what a *successful* call returns.
@@ -393,8 +402,20 @@ Declarations are built with [lldata/typescriptpoet](https://github.com/lldata/ty
 2021. The fork adds a Kotlin DSL, the object-literal getter a lazy call tree is made of, and a
 writer that breaks a call's argument list on width rather than running it off the line.
 
-It is on Maven Central, so there is nothing vendored here and nothing stopping this library being
-published in turn.
+It is pinned to a commit rather than a release, and comes from [JitPack][jitpack] rather than Maven
+Central — hence the extra `repositories` entry and the `com.github.lldata` group. Both repositories
+follow the same policy: unreleased work is continuously available from JitPack, which builds a commit
+on demand and publishes nothing, and only real releases go to Central. So an alpha of this library
+depending on an unreleased commit of that one is the ordinary case, not a corner to get out of. Both
+lines move back to `dk.lldata` and Central when TypeScriptPoet 2.0.0 lands, which is what a real
+release here would be built against.
+
+The commit is pinned for the reason JitPack's own docs give: a rolling coordinate has moved by the
+time anyone reads a bug report against it. The fix it is pinned for wraps an over-wide `import`,
+which is what keeps the emitted output a Prettier fixed point now that the transport import carries
+`type` twice — it landed the morning after `2.0.0-alpha10` was tagged.
+
+[jitpack]: https://jitpack.io
 
 ## Origin
 

@@ -11,6 +11,8 @@ group = "dk.lldata.tsclientgen.example"
 
 repositories {
     mavenCentral()
+    // TypeScriptPoet arrives through :generator, which is pinned to an unreleased commit.
+    maven("https://jitpack.io")
 }
 
 val quarkusPlatformGroupId: String by project

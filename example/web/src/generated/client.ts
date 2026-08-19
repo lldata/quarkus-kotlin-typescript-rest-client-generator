@@ -1,6 +1,10 @@
 // Generated from the Kotlin resources. Do not edit: fix the resources, or
 // the generator, and re-run `./gradlew :example:backend:generateApiClient`.
-import { ApiConfig, RequestOptions, apiRequest } from "./client-runtime.js";
+import {
+  apiRequest,
+  type ApiConfig,
+  type RequestOptions,
+} from "./client-runtime.js";
 
 export interface WireScalar<Raw, T extends Raw> {
   from: (raw: Raw) => T;

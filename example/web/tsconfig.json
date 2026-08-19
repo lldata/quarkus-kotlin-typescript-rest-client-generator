@@ -3,6 +3,13 @@
     "target": "es2022",
     "module": "es2022",
     "moduleResolution": "bundler",
+    // The strict reading of an import, and the reason the generated client marks its type imports
+    // as types. Without this, `tsc` elides a value import of a type and the file typechecks while
+    // being wrong for two ordinary consumers: `verbatimModuleSyntax` elsewhere (TS1484), and a
+    // runtime that strips types instead of compiling them, where the binding survives to run time
+    // and the module has no such export. This project is the emitted file's only typecheck, so it
+    // is checked in the shape that catches that rather than the one that forgives it.
+    "verbatimModuleSyntax": true,
     "lib": ["esnext", "dom", "dom.iterable"], // esnext for Temporal, used by src/generated/client-temporal.ts
     "strict": true,
     "noUncheckedIndexedAccess": true,

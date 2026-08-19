@@ -60,12 +60,24 @@ class TypeScriptClientEmitterTest {
         whole shouldContain "get return()"
     }
 
-    /** The import statement is the only thing the generated file knows about transport. */
+    /**
+     * The import statement is the only thing the generated file knows about transport.
+     *
+     * The two shapes carry `type`, so the line survives `verbatimModuleSyntax` and a runtime that
+     * strips types rather than compiling them. `apiRequest` is a function and must not.
+     */
     @Test
-    fun `imports the transport from the configured module`() {
+    fun `imports the transport from the configured module, with the types marked as types`() {
         val emitted = emit("BooksResource.detail")
 
-        emitted shouldContain "import { ApiConfig, RequestOptions, apiRequest } from \"./client-runtime\";"
+        emitted shouldContain
+            """
+            |import {
+            |  apiRequest,
+            |  type ApiConfig,
+            |  type RequestOptions,
+            |} from "./client-runtime";
+            """.trimMargin()
         emitted shouldContain "Generated. Do not edit."
     }
 
