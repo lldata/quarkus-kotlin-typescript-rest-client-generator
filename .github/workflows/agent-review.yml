@@ -1,0 +1,50 @@
+name: Agent — review a pull request
+
+# Reviews every pull request against the standards in AGENTS.md, posting inline comments on
+# what it finds. This runs on the agent's own pull requests too, which is deliberate: the
+# reviewer reads the diff cold, without the reasoning that produced it.
+#
+# On a public repository GitHub withholds secrets from fork pull requests, so this only runs
+# for branches in this repository. A fork's pull request gets a human's eyes first.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: agent-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+
+    steps:
+
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 1
+
+    - uses: anthropics/claude-code-action@v1
+      with:
+        claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        # The action refuses bot-authored events by default, to stop an agent triggering
+        # itself in a loop. The agent's own pull requests are the case that matters most
+        # here, so `claude` is named explicitly rather than opening this up to every bot.
+        allowed_bots: "claude"
+        plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
+        plugins: "code-review@claude-code-plugins"
+        prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+        # The action starts the inline-comment MCP server only when --allowedTools names it,
+        # regardless of what the skill's own frontmatter allows.
+        claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'

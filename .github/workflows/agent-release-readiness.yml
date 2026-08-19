@@ -1,0 +1,40 @@
+name: Agent — release readiness
+
+# Weekly: compare what has landed against the changelog and say whether a release is due,
+# opening a standing "Release readiness" issue only when one actually is.
+#
+# This never tags and never publishes. Publishing is a tag push, and the tag is a human's —
+# see the version policy in AGENTS.md.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+
+  assess:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+
+    steps:
+
+    # The full history, so `git describe` and `git log <tag>..main` see the tags.
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - uses: anthropics/claude-code-action@v1
+      with:
+        claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        prompt: "/release-readiness"
+        claude_args: |
+          --max-turns 30
+          --allowedTools "Read,Grep,Glob,Bash(git:*),Bash(gh:*)"

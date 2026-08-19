@@ -1,0 +1,122 @@
+name: Agent — tend
+
+# The rest of the automation reacts to events. Events get missed: a run dies halfway, a
+# reviewer objects and nobody answers, an issue arrives while the credential is broken. This
+# is the sweep that notices, and it is what makes the difference between an agent that works
+# when watched and one that keeps working when not.
+#
+# It surveys in shell first and only starts the agent when there is something to do, because a
+# quiet repository is the common case and spinning up a model to discover that is waste.
+
+on:
+  schedule:
+    # Every three hours. Frequent enough that a stuck pull request is not stuck overnight,
+    # rare enough that the survey below is nearly always the whole cost.
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+# Never two of these at once, and never one alongside a run started by an issue: they would
+# pick the same work and race each other's branches.
+concurrency:
+  group: agent-write
+  cancel-in-progress: false
+
+jobs:
+
+  survey:
+    runs-on: ubuntu-latest
+
+    outputs:
+      work: ${{ steps.look.outputs.work }}
+
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+
+    steps:
+
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 1
+
+    - id: look
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: .github/scripts/survey.sh
+
+  tend:
+    needs: [ survey ]
+    if: needs.survey.outputs.work == 'true'
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+
+    steps:
+
+    - uses: actions/checkout@v6
+
+    - uses: actions/setup-java@v5
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    # Half the gate is `npm run typecheck` in example/web; without Node that check skips and a
+    # green Gradle build would prove less than it appears to.
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '24'
+
+    - uses: gradle/actions/setup-gradle@v5
+
+    - id: agent
+      uses: anthropics/claude-code-action@v1
+      with:
+        claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        # Scheduled runs are attributed to whoever last edited the cron line, and the agent's
+        # own pull requests are authored by the app, so both need to be allowed through the
+        # bot check.
+        allowed_bots: "claude"
+        prompt: "/tend"
+        claude_args: |
+          --max-turns 200
+          --permission-mode acceptEdits
+          --allowedTools "Read,Write,Edit,Grep,Glob,Bash"
+
+    # The log records what the agent did, never what it decided. Keep the transcript so a run
+    # that produced nothing can still be explained.
+    - name: Keep the agent's transcript
+      if: always() && steps.agent.outputs.execution_file != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: transcript-tend-${{ github.run_id }}
+        path: ${{ steps.agent.outputs.execution_file }}
+        retention-days: 30
+        if-no-files-found: warn
+
+    # Same reasoning as the issue workflow: a sweep that dies silently is indistinguishable
+    # from a sweep that found nothing, and those are not the same thing.
+    - name: Say that the sweep failed
+      if: failure()
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        existing=$(gh issue list --state open --search "Agent sweep is failing in:title" \
+          --json number,title --jq '[.[] | select(.title == "Agent sweep is failing")][0].number // empty')
+        if [ -n "$existing" ]; then
+          gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "Failed again: $RUN_URL"
+        else
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Agent sweep is failing" --body "The periodic sweep failed: $RUN_URL
+
+        This is a note from the workflow, not the agent. While the sweep is failing, nothing is picking up stuck pull requests or unanswered issues, so the automation is quietly not working."
+        fi

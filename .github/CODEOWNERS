@@ -1,0 +1,26 @@
+# The agent may propose changes to any of this. It may not merge them.
+#
+# `main` requires code-owner review, so a pull request touching these paths cannot merge until
+# lldata approves it — whatever the agent concludes about its own authority, and whatever
+# AGENTS.md is edited to say in the same pull request. That last point is why this file exists
+# rather than a paragraph: a rule written only in prose is one the agent can rewrite in the
+# change that breaks it.
+#
+# What is protected is anything that constrains or observes the agent:
+#
+#   - the workflows, which GitHub already refuses to let a GitHub App touch
+#   - the scripts, which include the checks that make a silent or failed run visible
+#   - AGENTS.md, which is the authorisation rules themselves
+#   - the skills, which are the procedures it follows
+#   - the release path: the publishing configuration in the root build, and the single
+#     `version=` line that decides what the two artifacts are called
+#
+# Its craft is not protected. The generator, the annotations, the example and the changelog are
+# ordinary work, and a green build is a better judge of those than a human skim.
+
+/.github/                @lldata
+/.claude/                @lldata
+/AGENTS.md               @lldata
+/CLAUDE.md               @lldata
+/build.gradle.kts        @lldata
+/gradle.properties       @lldata
