@@ -22,6 +22,9 @@ object ExampleClient {
             // would work too — it is a list — and would refuse a payload type that appeared
             // anywhere else instead of quietly emitting it.
             dtoPackages = listOf("dk.lldata.tsclientgen.example"),
+            // `TagsResource` carries no `@TypeScriptApi` — this is the annotation-free route onto
+            // the client surface, standing in for a resource whose source the project does not own.
+            clientResources = listOf("dk.lldata.tsclientgen.example.api.TagsResource"),
             // The example opts into the strongest of the three: `Instant` is branded, and the page
             // converts it with the emitted Temporal module. The brand costs nothing here — the page
             // only ever reads timestamps — and `Isbn` is a Kotlin value class rather than a scalar,

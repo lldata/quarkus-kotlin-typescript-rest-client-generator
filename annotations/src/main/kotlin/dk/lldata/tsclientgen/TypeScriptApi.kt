@@ -17,6 +17,11 @@ package dk.lldata.tsclientgen
  * Leave it off for anything reached another way or by someone else: an admin surface, a webhook a
  * third party posts to, a test-only harness, an endpoint reached by browser navigation rather than
  * by `fetch`.
+ *
+ * Not the only way onto the client surface. A resource whose source you do not own has nothing to
+ * put this on; name it in `GeneratorOptions.clientResources` instead, or turn this annotation off
+ * project-wide with `GeneratorOptions.scanForAnnotation = false` to drop the dependency on this
+ * module from the runtime classpath entirely.
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)

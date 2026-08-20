@@ -65,8 +65,10 @@ class ClientGenerator(
     fun render(): String {
         val covered = model.clientSurface
         check(covered.isNotEmpty()) {
-            "none of the ${model.endpoints.size} endpoints read is on a resource carrying @TypeScriptApi, so the " +
-                "client would be empty. The annotation is opt-in: mark the resources that belong in the client."
+            "none of the ${model.endpoints.size} endpoints read is on the client surface, so the client would be " +
+                "empty. Both routes onto it are opt-in: mark a resource with @TypeScriptApi " +
+                "(GeneratorOptions.scanForAnnotation is ${options.scanForAnnotation}), or name it in " +
+                "GeneratorOptions.clientResources (currently ${options.clientResources.size} name(s))."
         }
         return formatter.format(TypeScriptClientEmitter(options).emit(covered))
     }

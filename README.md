@@ -132,6 +132,13 @@ issue; it is the kind of thing a report fixes and a guess does not.
 until someone says so — the review point for "is this part of the contract the browser calls", which
 the path alone cannot answer.
 
+The annotation is the default route, not the only one. `GeneratorOptions.clientResources` names
+resources by fully qualified class name instead — for one whose source you do not own, or for a
+project that would rather not put a `dk.lldata` annotation on its runtime classpath at all, in
+which case set `GeneratorOptions.scanForAnnotation = false` and name every resource explicitly.
+Both together is the union: a resource reaches the client by carrying `@TypeScriptApi`, by being
+named, or both.
+
 ```kotlin
 repositories {
     mavenLocal()     // the developer-machine route above; JitPack is the other

@@ -6,7 +6,7 @@ import {
   type RequestOptions,
 } from "./client-runtime.js";
 
-export const API_STAMP: string = "c8717a4c";
+export const API_STAMP: string = "72acdcb9";
 
 export const API_STAMP_HEADER: string = "x-api-stamp";
 
@@ -199,6 +199,13 @@ function shelvesNode(path: string, config: ApiConfig) {
   };
 }
 
+function tagsNode(path: string, config: ApiConfig) {
+  return {
+    get: (options?: RequestOptions): Promise<string[]> =>
+      apiRequest<string[]>({ method: "GET", path }, config, options),
+  };
+}
+
 export function createApi(baseConfig: ApiConfig = {}) {
   const config: ApiConfig = {
     ...baseConfig,
@@ -207,6 +214,9 @@ export function createApi(baseConfig: ApiConfig = {}) {
   return {
     get shelves() {
       return shelvesNode("/api/shelves", config);
+    },
+    get tags() {
+      return tagsNode("/api/tags", config);
     },
   };
 }

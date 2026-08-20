@@ -105,17 +105,45 @@ class ApiModelReader(
     }
 
     /** The same read from classes you already have — what the tests use, and a REST-less entry point. */
-    fun read(classes: List<Class<*>>): ApiModel =
-        ApiModel(
-            classes
-                .filter { it.isAnnotationPresent(Path::class.java) }
+    fun read(classes: List<Class<*>>): ApiModel {
+        val discovered = classes.filter { it.isAnnotationPresent(Path::class.java) }
+        val resources = (discovered + namedResources()).distinct()
+        return ApiModel(
+            resources
                 .flatMap { endpointsOf(it) }
                 .sortedWith(compareBy({ it.path }, { it.verb })),
         )
+    }
+
+    /**
+     * [GeneratorOptions.clientResources], resolved by name rather than discovered — the route for a
+     * resource that never turns up in a directory walk, because its source lives in a dependency
+     * rather than under `classesDir`.
+     *
+     * Resolved against this class's own loader, which is the generator process's classpath: broad
+     * enough to see a consumer's dependencies, not only what it compiled itself.
+     */
+    private fun namedResources(): List<Class<*>> {
+        if (options.clientResources.isEmpty()) return emptyList()
+        val loader = javaClass.classLoader
+        val resolved = options.clientResources.associateWith { name -> runCatching { Class.forName(name, false, loader) }.getOrNull() }
+        val unresolved = resolved.filterValues { it == null }.keys
+        require(unresolved.isEmpty()) {
+            "clientResources names ${unresolved.sorted()}, which did not resolve on the classpath."
+        }
+        val classes = resolved.values.filterNotNull()
+        val noPath = classes.filterNot { it.isAnnotationPresent(Path::class.java) }
+        require(noPath.isEmpty()) {
+            "clientResources names ${noPath.map { it.name }.sorted()}, which carry no @Path — there is nothing to emit for them."
+        }
+        return classes
+    }
 
     private fun endpointsOf(resource: Class<*>): List<Endpoint> {
         val basePath = resource.getAnnotation(Path::class.java).value
-        val inTypeScriptApi = resource.isAnnotationPresent(TypeScriptApi::class.java)
+        val inTypeScriptApi =
+            (options.scanForAnnotation && resource.isAnnotationPresent(TypeScriptApi::class.java)) ||
+                resource.name in options.clientResources
         return resource.declaredMethods.mapNotNull { method ->
             val verb = verbOf(method) ?: return@mapNotNull null
             val kotlinFunction = runCatching { method.kotlinFunction }.getOrNull() ?: return@mapNotNull null
