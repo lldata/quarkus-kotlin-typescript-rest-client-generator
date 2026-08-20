@@ -9,7 +9,7 @@
 
 /** One HTTP call as the generated client describes it, path interpolated. */
 export type ApiRequest = {
-  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS";
   path: string;
   query?: Record<string, string | number | boolean | null | undefined>;
   body?: unknown;

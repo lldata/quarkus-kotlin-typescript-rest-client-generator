@@ -6,7 +6,7 @@ import {
   type RequestOptions,
 } from "./client-runtime.js";
 
-export const API_STAMP: string = "56031b59";
+export const API_STAMP: string = "c8717a4c";
 
 export const API_STAMP_HEADER: string = "x-api-stamp";
 
@@ -129,6 +129,8 @@ function shelvesShelfBooksIsbnNode(path: string, config: ApiConfig) {
       apiRequest<void>({ method: "DELETE", path }, config, options),
     get: (options?: RequestOptions): Promise<BookDetailResponse> =>
       apiRequest<BookDetailResponse>({ method: "GET", path }, config, options),
+    head: (options?: RequestOptions): Promise<void> =>
+      apiRequest<void>({ method: "HEAD", path }, config, options),
   };
 }
 

@@ -16,6 +16,7 @@ import jakarta.ws.rs.CookieParam
 import jakarta.ws.rs.DELETE
 import jakarta.ws.rs.DefaultValue
 import jakarta.ws.rs.GET
+import jakarta.ws.rs.HEAD
 import jakarta.ws.rs.POST
 import jakarta.ws.rs.Path
 import jakarta.ws.rs.PathParam
@@ -86,6 +87,22 @@ class BooksResource(
         @PathParam("isbn") isbn: String,
     ): BookDetailResponse = catalogue.detail(shelf, isbn)
 
+    /**
+     * `HEAD` answers with headers and no body, by definition — [RestResponse]`<Void>` is the only
+     * honest return type, and the client narrows it to `Promise<void>`, the same as [remove] below.
+     * The generator believes this declaration rather than checking it against [detail]'s; getting
+     * the two to disagree is a resource bug, not something the generator is positioned to catch.
+     */
+    @HEAD
+    @Path("/{isbn}")
+    fun exists(
+        @PathParam("shelf") shelf: String,
+        @PathParam("isbn") isbn: String,
+    ): RestResponse<Void> {
+        catalogue.exists(shelf, isbn)
+        return RestResponse.ok()
+    }
+
     /** Both outcomes are a 200: the client narrows the union rather than interpreting a status. */
     @POST
     @Path("/{isbn}/borrow")
@@ -111,8 +128,9 @@ class BooksResource(
      * on purpose — `returnCopy` above puts the action in the path — because the generator has no
      * opinion about which a project picks, and the example is where that has to be visible.
      *
-     * Sharing a node with [detail] is the point: `books.isbn(x)` is both an endpoint and a
-     * namespace, and the verb at the leaf is what lets `get` and `delete` coexist there.
+     * Sharing a node with [detail] and [exists] is the point: `books.isbn(x)` is both an endpoint
+     * and a namespace, and the verb at the leaf is what lets `get`, `head` and `delete` coexist
+     * there.
      *
      * Removal has nothing to answer with, so the status is the whole answer. `RestResponse<Void>`
      * is emitted as `Promise<void>`, and the transport resolves on the status rather than parsing

@@ -68,6 +68,14 @@ class Catalogue {
         isbn: String,
     ): BookDetailResponse = detailOf(shelf, require(shelf, isbn), note = null)
 
+    /** Same lookup as [detail], discarding the book: existence is all a `HEAD` can honestly answer. */
+    fun exists(
+        shelf: String,
+        isbn: String,
+    ) {
+        require(shelf, isbn)
+    }
+
     fun add(
         shelf: String,
         request: AddBookRequest,
