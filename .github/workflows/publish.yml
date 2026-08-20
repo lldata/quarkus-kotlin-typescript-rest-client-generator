@@ -104,10 +104,16 @@ jobs:
           # Derived from two secrets, so it is not masked automatically.
           echo "::add-mask::$token"
 
+          # Keep the whole response. The Portal explains a rejection in `errors`, and reading only
+          # `deploymentState` throws that away — which leaves a failed release with no stated cause
+          # and nothing to do but guess at it one version at a time.
+          state_of='import json,sys; print(json.load(sys.stdin).get("deploymentState",""))'
+          errors_of='import json,sys; d=json.load(sys.stdin); e=d.get("errors") or d.get("deploymentErrors"); print(json.dumps(e or d, indent=2))'
+
           for _ in $(seq 1 20); do
-            state=$(curl -sS -X POST -H "Authorization: Bearer $token" \
-              "https://central.sonatype.com/api/v1/publisher/status?id=$id" \
-              | python3 -c 'import json,sys; print(json.load(sys.stdin).get("deploymentState",""))')
+            body=$(curl -sS -X POST -H "Authorization: Bearer $token" \
+              "https://central.sonatype.com/api/v1/publisher/status?id=$id")
+            state=$(printf '%s' "$body" | python3 -c "$state_of")
             echo "deployment $id: ${state:-unknown}"
             case "$state" in
               VALIDATED|PUBLISHED)
@@ -115,7 +121,8 @@ jobs:
                 exit 0
                 ;;
               FAILED)
-                echo "::error::Deployment failed validation."
+                echo "::error::Deployment failed validation. The Portal gave this reason:"
+                printf '%s' "$body" | python3 -c "$errors_of"
                 exit 1
                 ;;
             esac
