@@ -29,7 +29,7 @@ jobs:
 
     steps:
 
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
     # 21 is the toolchain the build asks for. The jars target 17, but that is a floor the
     # compiler enforces, not the JDK the build runs on.
@@ -40,11 +40,11 @@ jobs:
 
     # The generated client is type-checked with real tsc, as a separate npm step rather than
     # from Gradle. Without Node that half of the gate cannot run at all.
-    - uses: actions/setup-node@v6
+    - uses: actions/setup-node@v7
       with:
         node-version: '24'
 
-    - uses: gradle/actions/setup-gradle@v5
+    - uses: gradle/actions/setup-gradle@v6
 
     - uses: anthropics/claude-code-action@v1
       with:
