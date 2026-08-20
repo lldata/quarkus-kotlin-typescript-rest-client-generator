@@ -6,7 +6,7 @@ import {
   type RequestOptions,
 } from "./client-runtime.js";
 
-export const API_STAMP: string = "ca500faf";
+export const API_STAMP: string = "56031b59";
 
 export const API_STAMP_HEADER: string = "x-api-stamp";
 
@@ -110,13 +110,6 @@ function shelvesShelfBooksIsbnBorrowNode(path: string, config: ApiConfig) {
   };
 }
 
-function shelvesShelfBooksIsbnRemoveNode(path: string, config: ApiConfig) {
-  return {
-    post: (options?: RequestOptions): Promise<void> =>
-      apiRequest<void>({ method: "POST", path }, config, options),
-  };
-}
-
 function shelvesShelfBooksIsbnReturnNode(path: string, config: ApiConfig) {
   return {
     post: (options?: RequestOptions): Promise<BookDetailResponse> =>
@@ -129,12 +122,11 @@ function shelvesShelfBooksIsbnNode(path: string, config: ApiConfig) {
     get borrow() {
       return shelvesShelfBooksIsbnBorrowNode(`${path}/borrow`, config);
     },
-    get remove() {
-      return shelvesShelfBooksIsbnRemoveNode(`${path}/remove`, config);
-    },
     get return() {
       return shelvesShelfBooksIsbnReturnNode(`${path}/return`, config);
     },
+    delete: (options?: RequestOptions): Promise<void> =>
+      apiRequest<void>({ method: "DELETE", path }, config, options),
     get: (options?: RequestOptions): Promise<BookDetailResponse> =>
       apiRequest<BookDetailResponse>({ method: "GET", path }, config, options),
   };

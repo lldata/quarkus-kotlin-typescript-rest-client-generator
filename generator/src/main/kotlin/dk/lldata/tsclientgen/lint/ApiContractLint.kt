@@ -31,13 +31,12 @@ class ApiContractLint(
     private val types = TypeScriptTypes(options)
 
     /**
-     * The endpoints a TypeScript client is emitted for.
+     * The endpoints a TypeScript client is emitted for, and the scope of every rule here.
      *
-     * Scope is per rule, not per suite, because the rules do not all answer to the same authority.
-     * A rule whose reason is "this name becomes an exported TypeScript symbol" has nothing to say
-     * about an endpoint that is never emitted, and enforcing it there would mean renaming internal
-     * types to satisfy a constraint that does not reach them. [ApiContractRule.GET_OR_POST_ONLY] is
-     * about the HTTP API itself and reads every endpoint.
+     * A rule earns its place by naming something the emitted client would get wrong — a name that
+     * becomes an exported TypeScript symbol, a shape the generator cannot describe. None of that
+     * reaches an endpoint that is never emitted, and enforcing it there would mean renaming
+     * internal types to satisfy a constraint that does not touch them.
      */
     private val clientSurface get() = model.clientSurface
 
@@ -48,7 +47,6 @@ class ApiContractLint(
             addAll(responseNaming())
             addAll(sealedSubtypesComplete())
             addAll(variantLiteralsInDiscriminator())
-            addAll(getOrPostOnly())
             addAll(usablePathSegments())
             addAll(convertibleEnumParams())
             addAll(untypedPayloads())
@@ -188,27 +186,6 @@ class ApiContractLint(
                     )
                 }
         }
-
-    /**
-     * Two verbs, not four — an opinion, and one worth having: `GET` and `POST` cannot express what
-     * an application does, so the action goes in the last path segment instead of into a verb, and
-     * the client reads `books.isbn(x).markLost.post()` rather than needing a rule for which of
-     * `PUT`/`PATCH`/`DELETE` a given change is.
-     *
-     * Every endpoint, not just the client surface: this is about the HTTP API rather than the
-     * generated client. Filter this rule out if your project decided otherwise — the generator
-     * itself emits any verb.
-     */
-    private fun getOrPostOnly(): List<ApiContractViolation> =
-        model.endpoints
-            .filterNot { it.verb == "GET" || it.verb == "POST" }
-            .map {
-                ApiContractViolation(
-                    ApiContractRule.GET_OR_POST_ONLY,
-                    "${it.verb} ${it.path}",
-                    "uses a verb outside GET/POST. Put the action in the path instead.",
-                )
-            }
 
     /**
      * Segment names become the client's properties and methods, and the factory names derived from
@@ -528,7 +505,6 @@ enum class ApiContractRule {
     RESPONSE_NAMING,
     SEALED_SUBTYPES_COMPLETE,
     VARIANT_LITERAL_IN_DISCRIMINATOR,
-    GET_OR_POST_ONLY,
     USABLE_PATH_SEGMENTS,
     ENUM_QUERY_PARAM_CONVERTIBLE,
     UNTYPED_PAYLOAD,

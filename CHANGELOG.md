@@ -143,6 +143,52 @@ from `./gradlew publishToMavenLocal` — see the README.
   `@JsonTypeInfo`, `@JsonSubTypes`, `@JsonIgnore`, `@JsonInclude`) have been stable for years, so
   the practical floor has not moved. Quarkus 3.38 brings 2.22 in any case.
 
+### Removed
+
+- **Breaking. `GET_OR_POST_ONLY` is gone from the contract lint.** It refused any verb outside
+  `GET` and `POST`, on the reasoning that the action belongs in the last path segment —
+  `books.isbn(x).markLost.post()` rather than a rule for which of `PUT`/`PATCH`/`DELETE` a given
+  change is. That is a defensible way to design an HTTP API and it is not this library's call to
+  make. Every other rule here names something the emitted client would get wrong: a `String` body
+  it can only describe as `string`, a nested class with no flat TypeScript name, a segment that
+  cannot be a member. This one was taste, it was on by default, and a project that disagreed had to
+  opt out of an opinion it never asked for.
+
+  The generator always emitted any verb; only the lint objected. What is new is that all seven
+  verbs JAX-RS ships an annotation for — `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`,
+  `OPTIONS` — are now covered by a test, which nothing did before, because the rule forbade the
+  input that would have exercised them. Two are worth naming: `delete` is a reserved word, so it
+  can only ever be a property, and `options` shares its spelling with the per-call parameter every
+  leaf takes.
+
+  **Breaking** because `ApiContractRule.GET_OR_POST_ONLY` was public: a project that named it in a
+  `check(rules)` filter no longer compiles. Drop the name — the behaviour it filtered is gone.
+
+  The example moved with it, and the emitted client is smaller for it:
+
+  ```diff
+  -function shelvesShelfBooksIsbnRemoveNode(path: string, config: ApiConfig) {
+  -  return {
+  -    post: (options?: RequestOptions): Promise<void> =>
+  -      apiRequest<void>({ method: "POST", path }, config, options),
+  -  };
+  -}
+  ```
+  ```diff
+   function shelvesShelfBooksIsbnNode(path: string, config: ApiConfig) {
+  -    get remove() {
+  -      return shelvesShelfBooksIsbnRemoveNode(`${path}/remove`, config);
+  -    },
+  +    delete: (options?: RequestOptions): Promise<void> =>
+  +      apiRequest<void>({ method: "DELETE", path }, config, options),
+       get: (options?: RequestOptions): Promise<BookDetailResponse> =>
+  ```
+
+  `DELETE /api/shelves/{shelf}/books/{isbn}` now shares a node with the `GET` for the same book,
+  which is the shape the verb-at-the-leaf design was always for. `POST /{isbn}/return` stays as it
+  was, so the example still shows both idioms — which is the point: the generator has no opinion
+  about which one a project picks.
+
 ## [1.0.0-alpha4] — 2026-08-15
 
 ### Added
