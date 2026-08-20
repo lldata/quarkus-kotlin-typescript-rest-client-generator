@@ -9,7 +9,8 @@
 # change should need a human anyway.
 #
 # Writes `work=true|false` to $GITHUB_OUTPUT. Emits annotations saying what it found, because a
-# sweep that decides to do nothing should still say why.
+# sweep that decides to do nothing should still say why — and names what it found, because a
+# count alone cannot be checked against the repository by whoever reads the log.
 
 set -euo pipefail
 
@@ -19,15 +20,29 @@ set -euo pipefail
 # fine — those are green, or still running. BLOCKED means something is holding it: an unresolved
 # review thread, or a required check that failed. DIRTY means it conflicts.
 stuck_prs=$(gh pr list --state open --json number,mergeStateStatus \
-  --jq '[.[] | select(.mergeStateStatus == "BLOCKED" or .mergeStateStatus == "DIRTY")] | length')
+  --jq '[.[] | select(.mergeStateStatus == "BLOCKED" or .mergeStateStatus == "DIRTY") | .number] | join(", ")')
 
-# An open issue nobody has answered. `claude` is the login the agent comments as.
+# An open issue nobody has answered. `claude` is the login the agent comments as. Oldest first:
+# a burst of issues filed together is worked in the order it was filed, which is what someone
+# filing them expects and what the concurrency group only appeared to provide.
 silent_issues=$(gh issue list --state open --json number,comments \
-  --jq '[.[] | select([.comments[].author.login] | index("claude") | not)] | length')
+  --jq '[.[] | select([.comments[].author.login] | index("claude") | not) | .number] | sort | join(", ")')
 
-echo "::notice::$stuck_prs stuck pull requests, $silent_issues unanswered issues."
+# An issue already being worked has no comment on it yet either, so it looks exactly like one
+# nobody has picked up. Taking it would mean two runs on one issue: two branches, two pull
+# requests, and a second run reproducing a diagnosis the first has already made. While any issue
+# run is in flight the sweep leaves issues alone; pull requests are still fair game, since those
+# are the half nothing else is watching.
+working=$(gh run list --workflow=agent-issue.yml --status in_progress --json databaseId --jq 'length')
 
-if [ "$stuck_prs" -gt 0 ] || [ "$silent_issues" -gt 0 ]; then
+if [ "$working" -gt 0 ] && [ -n "$silent_issues" ]; then
+  echo "::notice::Issue run in flight; leaving issues $silent_issues alone this sweep."
+  silent_issues=""
+fi
+
+echo "::notice::Stuck pull requests: ${stuck_prs:-none}. Unanswered issues: ${silent_issues:-none}."
+
+if [ -n "$stuck_prs" ] || [ -n "$silent_issues" ]; then
   echo "work=true" >> "$GITHUB_OUTPUT"
 else
   echo "work=false" >> "$GITHUB_OUTPUT"
