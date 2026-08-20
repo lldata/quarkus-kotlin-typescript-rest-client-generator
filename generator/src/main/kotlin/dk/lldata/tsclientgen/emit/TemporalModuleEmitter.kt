@@ -10,7 +10,6 @@ import dk.lldata.typescriptpoet.dsl.file
 import dk.lldata.typescriptpoet.dsl.obj
 import dk.lldata.typescriptpoet.dsl.parameter
 import dk.lldata.typescriptpoet.dsl.property
-import dk.lldata.typescriptpoet.dsl.returns
 
 /**
  * A module converting the client's date scalars to and from `Temporal`, emitted separately from the

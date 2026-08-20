@@ -4,8 +4,8 @@ package dk.lldata.tsclientgen
  * This resource is part of the published TypeScript client.
  *
  * The generator emits a call for every endpoint on an annotated resource, and the rules in
- * [dk.lldata.tsclientgen.lint.ApiContractLint] judge exactly those endpoints — whether request
- * bodies are typed, whether a payload has a flat name, whether an emitted name shadows a global.
+ * `ApiContractLint` judge exactly those endpoints — whether request bodies are typed, whether a
+ * payload has a flat name, whether an emitted name shadows a global.
  * None of that applies to a resource without this annotation, because nothing generates a client
  * for it.
  *

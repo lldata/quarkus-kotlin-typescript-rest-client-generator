@@ -115,8 +115,8 @@ data class GeneratorOptions(
         private const val DATE_PATTERN = """\d{4}-\d{2}-\d{2}"""
         private const val TIME_PATTERN = """\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?"""
         private const val DATE_TIME_PATTERN = DATE_PATTERN + "T" + TIME_PATTERN
-        private const val INSTANT_PATTERN = DATE_TIME_PATTERN + """(?:Z|[+-]\d{2}:\d{2})"""
-        private const val ZONED_PATTERN = INSTANT_PATTERN + """(?:\[[^\]]+\])?"""
+        private const val INSTANT_PATTERN = """$DATE_TIME_PATTERN(?:Z|[+-]\d{2}:\d{2})"""
+        private const val ZONED_PATTERN = """$INSTANT_PATTERN(?:\[[^\]]+\])?"""
         private const val DURATION_PATTERN = """-?P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?"""
 
         /**

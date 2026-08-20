@@ -26,3 +26,15 @@ exclude:
   # consumers, so UnusedSymbol reports the surface it ships on purpose. Dead private code is a
   # different question and is still caught.
   - name: UnusedSymbol
+
+  # The chains this fires on run over a handful of endpoints or DTO members at generation time, not
+  # over data at request time: a Sequence would be slower here, not faster, and reads worse. See #43.
+  - name: ConvertCallChainIntoSequence
+
+  # A real call to make, not noise the way the two above are: destructuring a small record used in
+  # full (DeclaredMember's three fields, all read) is worth it, and is written by hand where it
+  # applies. What this inspection cannot tell apart is Endpoint and Param, both much wider records
+  # where a loop reads only some fields — there a positional tuple (skipping members with `_`, or
+  # matching only a prefix) is harder to read than `param.wireName`, not easier. Per-site suppression
+  # would hide that judgement in several places instead of stating it once. See #43.
+  - name: DestructuringDeclaration

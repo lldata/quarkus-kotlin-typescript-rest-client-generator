@@ -272,7 +272,7 @@ class TypeScriptTypes(
     /** The one-line spelling of [nullableTypeOf]. */
     fun renderNullable(type: KType): String = nullableTypeOf(type).toString()
 
-    /** Everything the emitter has to declare for [roots] to resolve. */
+    /** Everything the emitter has to declare for `roots` to resolve. */
     data class Reachable(
         val dtos: List<KClass<*>>,
         /**

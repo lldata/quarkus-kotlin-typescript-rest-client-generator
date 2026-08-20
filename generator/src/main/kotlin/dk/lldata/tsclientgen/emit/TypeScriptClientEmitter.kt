@@ -28,7 +28,6 @@ import dk.lldata.typescriptpoet.dsl.optional
 import dk.lldata.typescriptpoet.dsl.optionalMember
 import dk.lldata.typescriptpoet.dsl.parameter
 import dk.lldata.typescriptpoet.dsl.property
-import dk.lldata.typescriptpoet.dsl.returns
 import dk.lldata.typescriptpoet.dsl.shorthand
 import dk.lldata.typescriptpoet.dsl.spread
 import dk.lldata.typescriptpoet.dsl.type
@@ -242,8 +241,8 @@ class TypeScriptClientEmitter(
         surface: DeclaredSurface,
         dto: KClass<*>,
     ) = interfaze(dto.simpleName!!, Modifier.EXPORT) {
-        for (member in surface.membersOf(dto)) {
-            if (member.optional) optional(member.name, member.type) else property(member.name, member.type)
+        for ((name, type, optional) in surface.membersOf(dto)) {
+            if (optional) optional(name, type) else property(name, type)
         }
     }
 

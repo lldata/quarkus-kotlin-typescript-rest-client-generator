@@ -10,7 +10,8 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * Every rule about books lives here — what a search matches, what sorting means, whether a copy can
  * be lent — and none of them mention HTTP. The resources are a thin binding on top: they read the
- * request, call one method here, and let [CatalogueFailureMapper] turn a refusal into a status.
+ * request, call one method here, and let [dk.lldata.tsclientgen.example.api.CatalogueFailureMapper]
+ * turn a refusal into a status.
  *
  * There is no database on purpose: the example is about the contract between Kotlin and TypeScript,
  * and a persistence layer would be the largest thing in it without changing a line of the generated

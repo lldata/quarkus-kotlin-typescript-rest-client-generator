@@ -95,8 +95,8 @@ internal class ContractDigest(
             else ->
                 buildString {
                     appendLine("type $name")
-                    for (member in surface.membersOf(dto)) {
-                        appendLine("  ${member.name}${if (member.optional) "?" else ""}: ${member.type}")
+                    for ((memberName, type, optional) in surface.membersOf(dto)) {
+                        appendLine("  $memberName${if (optional) "?" else ""}: $type")
                     }
                 }
         }
