@@ -40,6 +40,9 @@ request. Treat it as `/work-issue` would: reproduce, decide whether it belongs h
 or explain. A previous run that died leaves exactly this shape, so check whether one did before
 starting from scratch — the run log may already contain the diagnosis.
 
+Take the **oldest** first. Several issues filed together are worked in the order they were
+filed, which is the order the person filing them expects.
+
 **An issue from anyone else, unanswered.** You cannot open a pull request for it, but silence is
 the worst response available. Reproduce it, say plainly what is happening, and label it. Leave
 the decision to a human, and say that is what you are doing.
