@@ -7,7 +7,9 @@ description: Assess whether a release is due, reporting to the run summary and o
 
 Read `AGENTS.md` for the version policy before you form an opinion. The short version: a human
 tags, you advise. 1.0.0 has not shipped, so until it does nothing here proposes anything but the
-next alpha.
+next alpha — and nothing at all while the JitPack dependency below stands. Unreleased work is not
+stranded meanwhile: any commit is consumable through JitPack, which is often the better answer to
+"when is this released?" anyway.
 
 ## Gather
 
@@ -19,7 +21,14 @@ next alpha.
 
 ## Judge
 
-Answer three questions, in this order:
+Answer four questions, in this order:
+
+**Can anything be released at all?** `:generator` depends on
+`com.github.lldata:typescriptpoet:<commit>`, a JitPack coordinate, and Central will not accept one
+as a dependency. While that line stands, no release of any kind can be published and the answer is
+hold whatever else has landed — say so first rather than burying it under a changelog audit. Check
+it in `generator/build.gradle.kts` rather than assuming it is still true; it goes back to
+`dk.lldata:typescriptpoet` when that fork's 2.0.0 lands.
 
 **Is the changelog honest?** Every user-visible commit since the tag should have an entry. List
 any that do not, by commit. This is the most common reason a release is not ready, and it is the
