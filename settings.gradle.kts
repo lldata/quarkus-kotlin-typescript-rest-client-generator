@@ -22,7 +22,6 @@ rootProject.name = "quarkus-kotlin-typescript-rest-client-generator"
 
 // Two annotations with no dependencies. They go on your resources, so they go on your runtime
 // classpath — separate from the generator, which does not.
-include("annotations")
 
 include("generator")
 

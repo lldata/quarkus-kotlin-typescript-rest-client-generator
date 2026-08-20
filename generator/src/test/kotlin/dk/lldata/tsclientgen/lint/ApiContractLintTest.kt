@@ -5,8 +5,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonValue
 import dk.lldata.tsclientgen.GeneratorOptions
 import dk.lldata.tsclientgen.ScalarStyle
-import dk.lldata.tsclientgen.TypeScriptApi
 import dk.lldata.tsclientgen.fixture.BookListResponse
+import dk.lldata.tsclientgen.fixture.ClientApi
 import dk.lldata.tsclientgen.fixtureModel
 import dk.lldata.tsclientgen.model.ApiModelReader
 import dk.lldata.tsclientgen.testOptions
@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 /** Everything a lint rule is supposed to catch, in one resource nobody would ship. */
-@TypeScriptApi
+@ClientApi
 @Path("/api/broken")
 private class BrokenResource {
     @POST
@@ -56,7 +56,7 @@ private class BrokenResource {
 }
 
 /** A path parameter whose name is a reserved word, which only bites where it is bound. */
-@TypeScriptApi
+@ClientApi
 @Path("/api/reserved")
 private class ReservedArgumentResource {
     @GET
@@ -72,7 +72,7 @@ private class ReservedArgumentResource {
  * Off the `*Response` naming too, on purpose — the two rules are independent and a name can break
  * both, which is worth seeing reported as two things rather than one.
  */
-@TypeScriptApi
+@ClientApi
 @Path("/api/shadowing")
 private class ShadowingResource {
     @GET

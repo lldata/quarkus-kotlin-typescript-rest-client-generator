@@ -1,6 +1,5 @@
 package dk.lldata.tsclientgen.example.api
 
-import dk.lldata.tsclientgen.TypeScriptApi
 import dk.lldata.tsclientgen.example.domain.Catalogue
 import dk.lldata.tsclientgen.example.domain.Shelf
 import jakarta.ws.rs.GET
@@ -15,7 +14,6 @@ import jakarta.ws.rs.core.MediaType
  * its place when there is something to say alongside the list, as `BookListResponse` has in `total`
  * and `tagCounts`; here there is nothing, and the client reads `Shelf[]`.
  */
-@TypeScriptApi
 @Path("/api/shelves")
 @Produces(MediaType.APPLICATION_JSON)
 class ShelvesResource(

@@ -7,12 +7,13 @@ import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.MediaType
 
 /**
- * No `@TypeScriptApi`, so no client is generated for it — an operator reads this with `curl`, and
+ * Carries `@NotOnTheClient`, so no client is generated for it — an operator reads this with `curl`, and
  * nothing in the browser should call it.
  *
  * It is still read into the model, which is how a rule about the HTTP API itself (the verb rule)
  * can see endpoints the client never touches.
  */
+@NotOnTheClient
 @Path("/api/ops")
 @Produces(MediaType.APPLICATION_JSON)
 class OpsResource(

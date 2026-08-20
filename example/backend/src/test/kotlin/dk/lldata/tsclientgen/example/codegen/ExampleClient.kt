@@ -1,5 +1,6 @@
 package dk.lldata.tsclientgen.example.codegen
 
+import dk.lldata.tsclientgen.AnnotationMatch
 import dk.lldata.tsclientgen.ClientGenerator
 import dk.lldata.tsclientgen.GeneratorOptions
 import dk.lldata.tsclientgen.ScalarStyle
@@ -22,9 +23,23 @@ object ExampleClient {
             // would work too — it is a list — and would refuse a payload type that appeared
             // anywhere else instead of quietly emitting it.
             dtoPackages = listOf("dk.lldata.tsclientgen.example"),
-            // `TagsResource` carries no `@TypeScriptApi` — this is the annotation-free route onto
-            // the client surface, standing in for a resource whose source the project does not own.
-            clientResources = listOf("dk.lldata.tsclientgen.example.api.TagsResource"),
+            // Everything with a path is client surface, and the exclusions say what is not. The
+            // opposite of the opt-in default the generator used to have, chosen deliberately here
+            // because it is the shape with a sharp edge: without `excludeAnnotations` it would
+            // sweep the ops endpoints into a browser-facing client.
+            //
+            // `jakarta.ws.rs.Path` is not this project's annotation, and neither is
+            // `@Operation(hidden = true)`. The generator is told both names and depends on neither.
+            includeAnnotations = listOf(AnnotationMatch("jakarta.ws.rs.Path")),
+            excludeAnnotations =
+                listOf(
+                    // On a class: `OpsResource` in full.
+                    AnnotationMatch("dk.lldata.tsclientgen.example.api.NotOnTheClient"),
+                    // On a method: one endpoint of `BooksResource`, leaving its siblings emitted.
+                    // The same annotation hides it from the OpenAPI document, which is what
+                    // MicroProfile defines it for.
+                    AnnotationMatch("org.eclipse.microprofile.openapi.annotations.Operation", "hidden", true),
+                ),
             // The example opts into the strongest of the three: `Instant` is branded, and the page
             // converts it with the emitted Temporal module. The brand costs nothing here — the page
             // only ever reads timestamps — and `Isbn` is a Kotlin value class rather than a scalar,

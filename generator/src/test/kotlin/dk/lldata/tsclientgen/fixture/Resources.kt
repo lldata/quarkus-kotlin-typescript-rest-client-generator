@@ -1,6 +1,5 @@
 package dk.lldata.tsclientgen.fixture
 
-import dk.lldata.tsclientgen.TypeScriptApi
 import jakarta.ws.rs.BeanParam
 import jakarta.ws.rs.CookieParam
 import jakarta.ws.rs.DELETE
@@ -42,7 +41,7 @@ class BookQuery(
     val pageSize: Int? = null,
 )
 
-@TypeScriptApi
+@ClientApi
 @Path("/api/shelf/{shelf}/books")
 class BooksResource {
     /** A `@BeanParam` holder, flattened to its query params, plus a node that is also a namespace. */
@@ -106,7 +105,7 @@ class BooksResource {
  * a bodyless one. Nothing enforces that, deliberately: the generator believes the resource rather
  * than validating its shape, the same as every other verb here. See #28.
  */
-@TypeScriptApi
+@ClientApi
 @Path("/api/documents/{id}")
 class DocumentsResource {
     @PUT
@@ -137,7 +136,7 @@ class DocumentsResource {
     ): RestResponse<Void> = TODO()
 }
 
-@TypeScriptApi
+@ClientApi
 @Path("/api/renamed")
 class RenamedResource {
     @GET
@@ -148,7 +147,7 @@ class RenamedResource {
 }
 
 /** Only used by the test that asserts a naming strategy is refused. */
-@TypeScriptApi
+@ClientApi
 @Path("/api/naming")
 class NamingStrategyResource {
     @GET
@@ -156,28 +155,28 @@ class NamingStrategyResource {
 }
 
 /** The plain-JAX-RS shape: a Response, which holds a body without saying what it is. */
-@TypeScriptApi
+@ClientApi
 @Path("/api/untyped")
 class UntypedResponseResource {
     @GET
     fun untyped(): jakarta.ws.rs.core.Response = TODO()
 }
 
-@TypeScriptApi
+@ClientApi
 @Path("/api/ignored")
 class IgnoredResource {
     @GET
     fun ignored(): IgnoredUnmappableResponse = TODO()
 }
 
-@TypeScriptApi
+@ClientApi
 @Path("/api/locale")
 class LocaleResource {
     @GET
     fun unknownScalar(): UnknownScalarResponse = TODO()
 }
 
-@TypeScriptApi
+@ClientApi
 @Path("/api/comments")
 class CommentsResource {
     @GET
@@ -193,11 +192,24 @@ class OpsResource {
 }
 
 /** Only used by tests that assert a refusal — a header the caller would have to set itself. */
-@TypeScriptApi
+@ClientApi
 @Path("/api/keyed")
 class ApiKeyedResource {
     @GET
     fun read(
         @HeaderParam("X-Api-Key") apiKey: String,
     ): BookListResponse = TODO()
+}
+
+/** One endpoint hidden, its sibling emitted — the case a class-level exclusion cannot express. */
+@ClientApi
+@Path("/api/hidden")
+class HiddenEndpointResource {
+    @GET
+    fun visible(): Shelf = TODO()
+
+    @Hidden
+    @GET
+    @Path("/internal")
+    fun internal(): Shelf = TODO()
 }

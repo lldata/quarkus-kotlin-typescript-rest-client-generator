@@ -1,6 +1,5 @@
 package dk.lldata.tsclientgen.example.api
 
-import dk.lldata.tsclientgen.TypeScriptApi
 import dk.lldata.tsclientgen.example.domain.AddBookRequest
 import dk.lldata.tsclientgen.example.domain.BookDetailResponse
 import dk.lldata.tsclientgen.example.domain.BookListResponse
@@ -25,6 +24,7 @@ import jakarta.ws.rs.QueryParam
 import jakarta.ws.rs.core.Context
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.UriInfo
+import org.eclipse.microprofile.openapi.annotations.Operation
 import org.jboss.resteasy.reactive.RestResponse
 
 /**
@@ -61,7 +61,6 @@ class BookQuery {
  * genuinely about HTTP: where each parameter comes from, and which answer is a status rather than a
  * body. Nothing decides anything about books.
  */
-@TypeScriptApi
 @Path("/api/shelves/{shelf}/books")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -149,6 +148,30 @@ class BooksResource(
         @Context uriInfo: UriInfo,
     ): RestResponse<Void> {
         catalogue.remove(shelf, isbn)
+        return RestResponse.noContent()
+    }
+
+    /**
+     * On the HTTP API, off the client — and marked once, in a vocabulary that is not this
+     * project's.
+     *
+     * `@Operation(hidden = true)` is MicroProfile's, and `quarkus-smallrye-openapi` already honours
+     * it by leaving this endpoint out of the OpenAPI document. The example names that same
+     * annotation in `GeneratorOptions.excludeAnnotations`, so the generator leaves it out of the
+     * client too. One statement of intent, two tools agreeing, and the generator depends on
+     * MicroProfile for nothing — it is told the name.
+     *
+     * The class-level exclusion cannot express this: `BooksResource` is client surface and every
+     * other endpoint on it is emitted. Only a method-targeted exclusion reaches one endpoint, which
+     * is why `@Operation` targets methods in the first place.
+     */
+    @Operation(hidden = true)
+    @POST
+    @Path("/reindex")
+    fun reindex(
+        @PathParam("shelf") shelf: String,
+    ): RestResponse<Void> {
+        catalogue.reindex(shelf)
         return RestResponse.noContent()
     }
 }

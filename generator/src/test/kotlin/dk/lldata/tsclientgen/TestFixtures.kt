@@ -12,6 +12,7 @@ import dk.lldata.tsclientgen.model.ApiModelReader
 val testOptions =
     GeneratorOptions(
         dtoPackages = listOf("dk.lldata.tsclientgen.fixture"),
+        includeAnnotations = listOf(AnnotationMatch("dk.lldata.tsclientgen.fixture.ClientApi")),
         header = "Generated. Do not edit.",
     )
 

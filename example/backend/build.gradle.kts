@@ -25,9 +25,6 @@ dependencies {
     implementation("io.quarkus:quarkus-smallrye-openapi")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
-    // Two annotations on the resources, nothing else. The generator is a build-time tool and never
-    // reaches the deployed application.
-    implementation(project(":annotations"))
     testImplementation(project(":generator"))
 
     testImplementation("io.quarkus:quarkus-junit5")

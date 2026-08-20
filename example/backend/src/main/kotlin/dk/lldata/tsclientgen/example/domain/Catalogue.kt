@@ -135,6 +135,14 @@ class Catalogue {
         books.getValue(shelf).remove(isbn)
     }
 
+    /**
+     * An operational chore rather than something the page does: it exists so the example has an
+     * endpoint on a client-facing resource that is deliberately not on the client.
+     */
+    fun reindex(shelf: String) {
+        require(books.containsKey(shelf)) { "no such shelf: $shelf" }
+    }
+
     private fun detailOf(
         shelf: String,
         book: Book,

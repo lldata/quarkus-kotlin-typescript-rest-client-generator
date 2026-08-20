@@ -128,16 +128,37 @@ compiled against — which are `compileOnly` here and absent from the published 
 the honest word: nothing checks it. If you are on an older platform and it breaks, that is worth an
 issue; it is the kind of thing a report fixes and a guess does not.
 
-**1. Annotate the resources you want a client for.** Opt-in, so a new resource is outside the client
-until someone says so — the review point for "is this part of the contract the browser calls", which
-the path alone cannot answer.
+**1. Say which resources you want a client for.** The generator ships no annotation and puts nothing
+on your runtime classpath: you name what selects a resource, and it reads whatever you already mark
+things with.
 
-The annotation is the default route, not the only one. `GeneratorOptions.clientResources` names
-resources by fully qualified class name instead — for one whose source you do not own, or for a
-project that would rather not put a `dk.lldata` annotation on its runtime classpath at all, in
-which case set `GeneratorOptions.scanForAnnotation = false` and name every resource explicitly.
-Both together is the union: a resource reaches the client by carrying `@TypeScriptApi`, by being
-named, or both.
+```kotlin
+// your own three-line annotation, or one your stack already has
+includeAnnotations = listOf(AnnotationMatch("com.acme.PublicApi")),
+
+// or every resource, with the ones that are not spelled out
+includeAnnotations = listOf(AnnotationMatch("jakarta.ws.rs.Path")),
+excludeAnnotations = listOf(AnnotationMatch("com.acme.Internal")),
+```
+
+Four selectors, and the surface is the union of the includes minus the excludes:
+
+| Option | Selects |
+| --- | --- |
+| `includeAnnotations` | resources carrying an annotation, optionally with one member fixed to a value |
+| `includePackages` | resources under a package prefix |
+| `clientResources` | resources named outright, for source you do not own |
+| `excludeAnnotations` | on a class, the resource; on a method, that one endpoint |
+| `excludePackages` | a whole package, whatever included it |
+
+Two rules worth knowing. **Exclusion wins**, including over a resource named in `clientResources` —
+the list exists to guarantee something never reaches a published client, and a guarantee with
+exceptions is not one. And an `AnnotationMatch` can pin a member: `AnnotationMatch("…Operation",
+"hidden", true)` matches MicroProfile's `@Operation(hidden = true)`, so one annotation keeps an
+endpoint out of the OpenAPI document *and* out of the client.
+
+Widening is deliberate and narrowing is safe, which is why include has no package glob beyond a
+prefix and exclude is checked last.
 
 ```kotlin
 repositories {

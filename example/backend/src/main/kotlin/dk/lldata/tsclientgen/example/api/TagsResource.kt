@@ -7,8 +7,7 @@ import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.MediaType
 
 /**
- * On the client surface by name, not by `@TypeScriptApi` — see `clientResources` in
- * `ExampleClient.kt`. Standing in for a resource whose source you do not own, which has nothing
+ * On the client surface because it carries `@Path`, like every other resource here.
  * to put the annotation on.
  */
 @Path("/api/tags")

@@ -7,7 +7,6 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
@@ -95,14 +94,21 @@ class ClientGeneratorTest {
         generator(shouty).driftAgainst(written).shouldBeNull()
     }
 
-    /** Opt-in, so an empty client is a mistake to report rather than a file to write. */
+    /**
+     * Warns rather than refusing. `GeneratorOptions` already refuses a configuration that could
+     * never select anything; getting here means it could have and this classpath did not, which is
+     * an outcome — mid-migration, or a module with no client-facing resources yet.
+     */
     @Test
-    fun `refuses to emit when no resource opted in`() {
-        val opsOnly = ClientGenerator(testOptions) { ApiModelReader(testOptions).read(listOf(OpsResource::class.java)) }
+    fun `warns, and still emits, when nothing is on the client surface`() {
+        val warnings = mutableListOf<String>()
+        val options = testOptions.copy(onWarning = { warnings += it })
+        val opsOnly = ClientGenerator(options) { ApiModelReader(options).read(listOf(OpsResource::class.java)) }
 
-        val failure = assertThrows<IllegalStateException> { opsOnly.render() }
+        val emitted = opsOnly.render()
 
-        failure.message!! shouldContain "@TypeScriptApi"
+        warnings.single() shouldContain "no calls in it"
+        emitted shouldContain "export function createApi"
     }
 
     /** The lint reads the same model the client is emitted from. */

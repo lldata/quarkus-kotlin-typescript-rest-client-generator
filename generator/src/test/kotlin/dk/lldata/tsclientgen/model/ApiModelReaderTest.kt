@@ -1,13 +1,17 @@
 package dk.lldata.tsclientgen.model
 
+import dk.lldata.tsclientgen.AnnotationMatch
 import dk.lldata.tsclientgen.fixture.BookQuery
 import dk.lldata.tsclientgen.fixture.BooksResource
 import dk.lldata.tsclientgen.fixture.BorrowResponse
+import dk.lldata.tsclientgen.fixture.HiddenEndpointResource
 import dk.lldata.tsclientgen.fixture.OpsResource
 import dk.lldata.tsclientgen.fixture.SortField
 import dk.lldata.tsclientgen.fixtureModel
 import dk.lldata.tsclientgen.testOptions
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -114,12 +118,12 @@ class ApiModelReaderTest {
         described shouldContain "\"limit\" limitRaw: kotlin.Int = 20"
     }
 
-    /** `clientResources` alone, with the annotation off, is the annotation-free setup. */
+    /** `clientResources` alone, with no include annotation, is the annotation-free setup. */
     @Test
     fun `puts a named resource on the client surface without the annotation`() {
         val options =
             testOptions.copy(
-                scanForAnnotation = false,
+                includeAnnotations = emptyList(),
                 clientResources = listOf(OpsResource::class.java.name),
             )
 
@@ -168,14 +172,81 @@ class ApiModelReaderTest {
         failure.message!! shouldContain BookQuery::class.java.name
     }
 
-    /** `scanForAnnotation = false` with nothing named can only ever produce an empty client. */
+    /** No include of any kind can only ever produce an empty client, and is answerable up front. */
     @Test
-    fun `refuses when neither route onto the client surface is open`() {
+    fun `refuses when no route onto the client surface is open`() {
         val failure =
             assertThrows<IllegalArgumentException> {
-                testOptions.copy(scanForAnnotation = false, clientResources = emptyList())
+                testOptions.copy(includeAnnotations = emptyList(), includePackages = emptyList(), clientResources = emptyList())
             }
 
-        failure.message!! shouldContain "scanForAnnotation"
+        failure.message!! shouldContain "includeAnnotations, includePackages and clientResources are all empty"
+    }
+
+    /**
+     * The rule someone will expect to go the other way, so the name says it.
+     *
+     * Exclusion is a guarantee that something never reaches a published client, and a guarantee
+     * with exceptions is not one — a stale entry in `clientResources` must not be able to publish
+     * a resource somebody marked internal.
+     */
+    @Test
+    fun `exclusion beats a resource named in clientResources`() {
+        val options =
+            testOptions.copy(
+                clientResources = listOf(BooksResource::class.java.name),
+                excludeAnnotations = listOf(AnnotationMatch("dk.lldata.tsclientgen.fixture.ClientApi")),
+            )
+
+        val read = ApiModelReader(options).read(listOf(BooksResource::class.java))
+
+        read.clientSurface.shouldBeEmpty()
+        read.endpoints.shouldNotBeEmpty()
+    }
+
+    /** A method-targeted exclusion reaches one endpoint, not the resource it hangs off. */
+    @Test
+    fun `a method-level exclusion drops one endpoint and leaves its siblings`() {
+        val options =
+            testOptions.copy(excludeAnnotations = listOf(AnnotationMatch("dk.lldata.tsclientgen.fixture.Hidden", "value", true)))
+
+        val read = ApiModelReader(options).read(listOf(HiddenEndpointResource::class.java))
+
+        read.clientSurface.map { it.id() } shouldContainExactly listOf("HiddenEndpointResource.visible")
+    }
+
+    /** A package prefix is the cheap way to keep a whole area off the client. */
+    @Test
+    fun `excludePackages keeps a whole package off the client surface`() {
+        val options = testOptions.copy(excludePackages = listOf("dk.lldata.tsclientgen.fixture"))
+
+        val read = ApiModelReader(options).read(listOf(BooksResource::class.java))
+
+        read.clientSurface.shouldBeEmpty()
+    }
+
+    /** Included by package rather than by annotation, for a project that organises by layer. */
+    @Test
+    fun `includePackages puts a resource on the surface without an annotation`() {
+        val options =
+            testOptions.copy(
+                includeAnnotations = emptyList(),
+                includePackages = listOf("dk.lldata.tsclientgen.fixture"),
+            )
+
+        val read = ApiModelReader(options).read(listOf(OpsResource::class.java))
+
+        read.clientSurface.map { it.id() } shouldContainExactly listOf("OpsResource.stats")
+    }
+
+    /** A member that the annotation does not declare is a mistake, not a match that never fires. */
+    @Test
+    fun `refuses an AnnotationMatch naming a member the annotation does not have`() {
+        val options =
+            testOptions.copy(excludeAnnotations = listOf(AnnotationMatch("dk.lldata.tsclientgen.fixture.ClientApi", "nope", true)))
+
+        val failure = assertThrows<IllegalStateException> { ApiModelReader(options).read(listOf(BooksResource::class.java)) }
+
+        failure.message!! shouldContain "which @dk.lldata.tsclientgen.fixture.ClientApi does not declare"
     }
 }
