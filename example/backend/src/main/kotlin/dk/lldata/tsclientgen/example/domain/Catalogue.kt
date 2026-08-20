@@ -38,6 +38,14 @@ class Catalogue {
 
     fun shelves(): List<Shelf> = names.map { (slug, name) -> Shelf(ShelfSlug(slug), name, books.getValue(slug).size) }
 
+    /** Every tag in use, across every shelf — what a filter's autocomplete would offer. */
+    fun tags(): List<String> =
+        books.values
+            .flatMap { it.values }
+            .flatMap { it.tags }
+            .toSortedSet()
+            .toList()
+
     /** Filter, sort, then cut — and report the total from before the cut, which is what a page shows. */
     fun search(
         shelf: String,

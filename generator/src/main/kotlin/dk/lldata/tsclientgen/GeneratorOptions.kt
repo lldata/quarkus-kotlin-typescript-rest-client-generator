@@ -80,6 +80,27 @@ data class GeneratorOptions(
      * `JavaExec` puts it in front of whoever ran the task.
      */
     val onWarning: (String) -> Unit = { System.err.println("tsclientgen: $it") },
+    /**
+     * Resources to put on the client surface by name rather than by annotation — fully qualified
+     * class names.
+     *
+     * The union with [scanForAnnotation] decides the surface: a resource on it because it carries
+     * `@TypeScriptApi`, or because it is named here, or both — never neither. A name here that
+     * does not resolve on the classpath, or that resolves to a class with no `@Path`, is refused
+     * rather than silently shrinking the client.
+     *
+     * For a resource whose source you do not own — so there is nothing to put `@TypeScriptApi`
+     * on — or for keeping `:annotations` off the runtime classpath entirely, name it here instead.
+     */
+    val clientResources: List<String> = emptyList(),
+    /**
+     * Put every `@TypeScriptApi`-carrying resource on the client surface. On by default, which is
+     * today's only behaviour.
+     *
+     * Off, with [clientResources] doing all the naming, is the annotation-free setup: nothing on
+     * the runtime classpath ever needs to depend on `:annotations`.
+     */
+    val scanForAnnotation: Boolean = true,
 ) {
     init {
         require(dtoPackages.isNotEmpty()) {
@@ -87,6 +108,10 @@ data class GeneratorOptions(
         }
         require(rootPath.startsWith("/")) { "rootPath must start with '/', was '$rootPath'." }
         require(runtimeImport.isNotBlank()) { "runtimeImport is what the emitted import statement says; it cannot be blank." }
+        require(scanForAnnotation || clientResources.isNotEmpty()) {
+            "scanForAnnotation is false and clientResources is empty, so no resource could ever be on the client " +
+                "surface. Turn scanForAnnotation on, or name at least one resource in clientResources."
+        }
     }
 
     companion object {

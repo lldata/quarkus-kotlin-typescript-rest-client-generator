@@ -13,7 +13,7 @@ import kotlin.reflect.KType
 data class ApiModel(
     val endpoints: List<Endpoint>,
 ) {
-    /** The endpoints a client is emitted for — the resources carrying `@TypeScriptApi`. */
+    /** The endpoints a client is emitted for — see [Endpoint.inTypeScriptApi]. */
     val clientSurface: List<Endpoint> get() = endpoints.filter { it.inTypeScriptApi }
 
     /**
@@ -52,7 +52,12 @@ data class Endpoint(
     val unwrappedFrom: String?,
     /**
      * True when this endpoint is part of the contract the TypeScript client is generated for —
-     * its resource carries `@TypeScriptApi`.
+     * its resource carries `@TypeScriptApi` (while [dk.lldata.tsclientgen.GeneratorOptions.scanForAnnotation]
+     * is on), or is named in [dk.lldata.tsclientgen.GeneratorOptions.clientResources], or both.
+     *
+     * The name is kept from when the annotation was the only route in: renaming it would ripple
+     * through [ApiModel], its summary output and its tests for no behavioural gain. Read it as "in
+     * the client", not literally as "carries the annotation".
      *
      * Read here rather than in each rule so the lint and the generator cannot disagree about what
      * the client covers.

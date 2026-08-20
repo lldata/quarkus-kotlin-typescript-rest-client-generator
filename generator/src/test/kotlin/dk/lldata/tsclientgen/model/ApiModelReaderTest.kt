@@ -1,13 +1,18 @@
 package dk.lldata.tsclientgen.model
 
+import dk.lldata.tsclientgen.fixture.BookQuery
+import dk.lldata.tsclientgen.fixture.BooksResource
 import dk.lldata.tsclientgen.fixture.BorrowResponse
+import dk.lldata.tsclientgen.fixture.OpsResource
 import dk.lldata.tsclientgen.fixture.SortField
 import dk.lldata.tsclientgen.fixtureModel
+import dk.lldata.tsclientgen.testOptions
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import kotlin.reflect.typeOf
 
 class ApiModelReaderTest {
@@ -107,5 +112,70 @@ class ApiModelReaderTest {
         described shouldContain "[via RestResponse]"
         described shouldContain "[not in client]"
         described shouldContain "\"limit\" limitRaw: kotlin.Int = 20"
+    }
+
+    /** `clientResources` alone, with the annotation off, is the annotation-free setup. */
+    @Test
+    fun `puts a named resource on the client surface without the annotation`() {
+        val options =
+            testOptions.copy(
+                scanForAnnotation = false,
+                clientResources = listOf(OpsResource::class.java.name),
+            )
+
+        val named = ApiModelReader(options).read(listOf(OpsResource::class.java))
+
+        named.clientSurface.map { it.id() } shouldContainExactly listOf("OpsResource.stats")
+    }
+
+    /** A resource that is both annotated and named appears once, not twice. */
+    @Test
+    fun `does not duplicate a resource that is both annotated and named`() {
+        val options = testOptions.copy(clientResources = listOf(BooksResource::class.java.name))
+
+        val both = ApiModelReader(options).read(listOf(BooksResource::class.java))
+
+        both.endpoints.count { it.id() == "BooksResource.list" } shouldBe 1
+    }
+
+    /** The surface is the union: an annotated resource and a disjoint named one both reach it. */
+    @Test
+    fun `unions an annotated resource with a disjoint named one`() {
+        val options = testOptions.copy(clientResources = listOf(OpsResource::class.java.name))
+
+        val union = ApiModelReader(options).read(listOf(BooksResource::class.java, OpsResource::class.java))
+
+        union.clientSurface.map { it.resource }.toSet() shouldBe setOf("BooksResource", "OpsResource")
+    }
+
+    /** A typo, a moved class or a package rename would otherwise silently shrink the client. */
+    @Test
+    fun `refuses a named resource that does not resolve on the classpath`() {
+        val options = testOptions.copy(clientResources = listOf("dk.lldata.tsclientgen.fixture.NoSuchResource"))
+
+        val failure = assertThrows<IllegalArgumentException> { ApiModelReader(options).read(listOf(BooksResource::class.java)) }
+
+        failure.message!! shouldContain "dk.lldata.tsclientgen.fixture.NoSuchResource"
+    }
+
+    /** A class with no `@Path` has no endpoints, so naming it can only be the wrong class. */
+    @Test
+    fun `refuses a named resource with no @Path`() {
+        val options = testOptions.copy(clientResources = listOf(BookQuery::class.java.name))
+
+        val failure = assertThrows<IllegalArgumentException> { ApiModelReader(options).read(listOf(BooksResource::class.java)) }
+
+        failure.message!! shouldContain BookQuery::class.java.name
+    }
+
+    /** `scanForAnnotation = false` with nothing named can only ever produce an empty client. */
+    @Test
+    fun `refuses when neither route onto the client surface is open`() {
+        val failure =
+            assertThrows<IllegalArgumentException> {
+                testOptions.copy(scanForAnnotation = false, clientResources = emptyList())
+            }
+
+        failure.message!! shouldContain "scanForAnnotation"
     }
 }

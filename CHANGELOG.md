@@ -11,6 +11,19 @@ from `./gradlew publishToMavenLocal` — see the README.
 
 ### Added
 
+- **A resource can reach the client surface by name, not only by `@TypeScriptApi`.**
+  ([#41](https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/issues/41))
+  The annotation puts a `dk.lldata` dependency on a consumer's runtime classpath, and it needs
+  source to put it on — neither is true of a resource from a dependency the project does not own.
+  `GeneratorOptions.clientResources` names resources by fully qualified class name instead, and
+  `GeneratorOptions.scanForAnnotation` (on by default) turns the annotation route off entirely,
+  for a project that would rather drop `:annotations` from its runtime classpath than adopt it.
+  The two compose as a union: a resource reaches the client by carrying the annotation, by being
+  named, or both. A name that does not resolve on the classpath, that names a class with no
+  `@Path`, or a configuration where neither route is open, refuses rather than silently shrinking
+  or emptying the client. The example demonstrates the annotation-free route: `TagsResource` opts
+  in through `clientResources` alone.
+
 - **An optional stamp in the emitted client, so a copy of it can tell it is stale.** Inside a
   repository the drift test is the gate; outside one there was nothing, and a vendored client — a
   second service that cannot run the generator, because that needs the backend's compiled classes —
