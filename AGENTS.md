@@ -330,6 +330,20 @@ without saying in the PR that the workaround belongs upstream.
 
 ## Releases
 
+There are two channels, and only one of them publishes anything.
+
+**Unreleased commits are testable through JitPack**, which builds this repository on demand —
+`jitpack.yml` says how. Nothing is published for that to work and no version is spent: a consumer
+adds the JitPack repository and depends on
+`com.github.lldata.quarkus-kotlin-typescript-rest-client-generator:<module>:<commit>`. The README
+has the coordinate in full.
+
+The consequence worth using: a change is testable by a real consumer the moment it merges, and what
+a consumer has to test here is emitted TypeScript compiling against their own code, which no test
+in this repository can do for them. So "this is on `main` now — try the commit and say whether it
+fixed it" is a real answer to a report, and often a better one than reaching for a release. Offer a
+commit rather than `main-SNAPSHOT`: a rolling version moves under the person reporting back.
+
 **Releases are deliberate, and they take two steps.** Unlike some repositories, the version here
 is not taken from the tag: it is the `version=` line in `gradle.properties`, and the publish
 workflow *refuses* a tag that does not match what is committed. So a release is
