@@ -1,0 +1,27 @@
+# JitPack builds this repository on demand, so a project can depend on an unreleased commit without
+# anything being published anywhere. The README says how to consume it.
+#
+# That matters more here than it would for most libraries. What a consumer has to check is emitted
+# TypeScript compiling against their own pages, which no test in this repository can do for them —
+# so "try the commit and tell me" is the useful answer to a bug report, and it needs a coordinate
+# to point at. It costs nothing: JitPack builds from git and publishes to no repository.
+
+# Only what runs Gradle. The two published modules compile against the JDK 17 API and are built by a
+# JDK 21 toolchain, which `settings.gradle.kts` provisions through the foojay resolver rather than
+# expecting to find installed — so the version here is the one JitPack is known to have, not the
+# one the build compiles with.
+jdk:
+  - openjdk17
+
+# JitPack's default is `./gradlew install`, which this build does not define.
+#
+# The two published modules are named rather than left to the whole build: `publishToMavenLocal`
+# across every project would also configure `:example:backend`, which is the integration test and
+# has nothing a consumer resolves.
+#
+# `$VERSION` is the tag or commit JitPack was asked for, and `-Pversion` is the same knob
+# `gradle.properties` turns on an ordinary build, so the artifacts land under the coordinate JitPack
+# then serves. Signing needs no handling: it turns itself on only when a key is present, and the key
+# never leaves the publish workflow.
+install:
+  - ./gradlew :annotations:publishToMavenLocal :generator:publishToMavenLocal -Pversion=$VERSION

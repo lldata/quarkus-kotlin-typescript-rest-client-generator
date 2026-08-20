@@ -76,31 +76,43 @@ The module-level `api` is for the browser, where the cookie is the credential.
 
 **0. Get the artifacts.** Not on Maven Central yet, so there are two ways in.
 
+*From anywhere a build runs* — a CI runner, a colleague's machine — through
+[JitPack][jitpack], which builds a commit of this repository on demand. Nothing is published for
+that to work and no release has to be cut:
+
+```kotlin
+repositories {
+    mavenCentral()
+    maven("https://jitpack.io")
+}
+
+dependencies {
+    val client = "com.github.lldata.quarkus-kotlin-typescript-rest-client-generator"
+
+    implementation("$client:quarkus-kotlin-typescript-rest-client-annotations:main-SNAPSHOT")
+    testImplementation("$client:quarkus-kotlin-typescript-rest-client-generator:main-SNAPSHOT")
+}
+```
+
+Two things about that coordinate. The group is the repository's rather than `dk.lldata`, because
+JitPack builds from git — and it carries the repository name because this is a multi-module build,
+where the artifact id stays what the module publishes. Both lines change to `dk.lldata` at a
+release.
+
+And `main-SNAPSHOT` is the convenient version, not the good one. It moves, so a bug report against
+it is not reproducible; a commit — `…-generator:2bf36ed` — does not. Pin one as soon as you are
+reporting anything. The first request for a given commit takes a minute or two while JitPack builds
+it, and is cached after that.
+
 *On a developer machine*, install into `~/.m2` and add `mavenLocal()` to the consuming build:
 
 ```bash
 ./gradlew publishToMavenLocal
 ```
 
-*Anywhere a build runs without your `~/.m2`* — a CI runner, most obviously — take the jars from the
-[release](https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/releases), commit
-them to a `libs/` directory and depend on the files. **A `files(…)` dependency carries no
-transitives**, so the generator's own two come by hand:
-
-```kotlin
-repositories { mavenCentral() }
-
-dependencies {
-    implementation(files("libs/quarkus-kotlin-typescript-rest-client-annotations-1.0.0-alpha4.jar"))
-
-    testImplementation(files("libs/quarkus-kotlin-typescript-rest-client-generator-1.0.0-alpha4.jar"))
-    testImplementation("dk.lldata:typescriptpoet:2.0.0-alpha10")
-    testImplementation(kotlin("reflect"))
-}
-```
-
-Leave `kotlin("reflect")` out and every endpoint is dropped — the generator checks for it and says
-so, rather than reporting the symptom, which reads like a wrong directory.
+Either way the generator brings `kotlin-reflect` with it. Exclude it and every endpoint is dropped —
+the generator checks and says so, rather than reporting the symptom, which reads like a wrong
+directory.
 
 **1. Annotate the resources you want a client for.** Opt-in, so a new resource is outside the client
 until someone says so — the review point for "is this part of the contract the browser calls", which
@@ -108,8 +120,8 @@ the path alone cannot answer.
 
 ```kotlin
 repositories {
-    mavenLocal()     // where the two artifacts below are, until they are published
-    mavenCentral()   // where dk.lldata:typescriptpoet is
+    mavenLocal()     // the developer-machine route above; JitPack is the other
+    mavenCentral()   // where the generator's own dependencies are
 }
 
 dependencies {
@@ -481,10 +493,22 @@ The version is set once, in `gradle.properties`, so the two published artifacts 
 
 ### Publishing
 
-`publishToMavenLocal` is the whole story for now — there is no repository configured to publish to,
-deliberately. Maven Central would need signing keys, a Portal account and a `repositories` block in
-the publication; nothing in the code stands in the way any more, since the last blocker (a vendored
-jar that a POM cannot declare) is gone.
+There are two channels, and only one of them publishes anything.
+
+**Unreleased commits build on JitPack**, which is what `jitpack.yml` is for. A consumer asks for a
+commit, JitPack runs `publishToMavenLocal` on it and serves what comes out; nothing is published
+here, no version is spent, and a fix is testable by whoever reported it the moment it merges. That
+is worth reaching for before cutting a release, because the thing being tested is emitted TypeScript
+compiling in someone else's build.
+
+**Releases are deliberate, and take two steps.** The version is the `version=` line in
+`gradle.properties`, not the tag — pushing `v<that version>` builds at it, uploads a signed bundle
+to the [Central Portal](https://central.sonatype.com/publishing) and opens a draft GitHub release.
+A tag that disagrees with what is committed fails the workflow rather than publishing the wrong
+number.
+
+Nothing reaches Maven Central until a human presses Publish there: a released version is permanent
+and cannot be recalled, so it stays a deliberate act rather than a consequence of pushing a tag.
 
 ### TypeScriptPoet
 

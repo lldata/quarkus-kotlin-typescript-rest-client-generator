@@ -4,7 +4,8 @@ All notable changes to this project are documented here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 The versions below are tags, not published releases: nothing has reached Maven Central yet. Until
-it does, the artifacts are available through `./gradlew publishToMavenLocal` — see the README.
+it does, the artifacts come from JitPack, which builds any commit of this repository on demand, or
+from `./gradlew publishToMavenLocal` — see the README.
 
 ## [Unreleased]
 
@@ -60,6 +61,28 @@ it does, the artifacts are available through `./gradlew publishToMavenLocal` —
   The shipped scalar table avoids every global today, which #2 rightly called luck rather than
   judgement — `java.net.URI` is aliased `URI`, and `URL` would have collided. The next scalar
   added has to choose its name deliberately.
+
+- **Any commit of this repository can now be depended on, through JitPack.** Until now a consumer
+  who was not on the machine that ran `publishToMavenLocal` had to take jars out of a GitHub release
+  and commit them to a `libs/` directory, with the generator's transitive dependencies written out
+  by hand because a `files(…)` dependency carries none. `jitpack.yml` replaces that: JitPack builds
+  the commit on demand and serves what `publishToMavenLocal` produced, so testing an unreleased fix
+  is a version string rather than a vendoring exercise.
+
+  ```kotlin
+  repositories { maven("https://jitpack.io") }
+
+  dependencies {
+      val client = "com.github.lldata.quarkus-kotlin-typescript-rest-client-generator"
+      testImplementation("$client:quarkus-kotlin-typescript-rest-client-generator:2bf36ed")
+  }
+  ```
+
+  The group is the repository's, and carries the repository name because this is a multi-module
+  build; it goes back to `dk.lldata` at a release. Nothing is published for this to work and no
+  version is spent, which is the point — a fix is testable by the person who reported it the moment
+  it merges, and what has to be tested here is emitted TypeScript compiling in their build, which no
+  test in this repository can do for them.
 
 ### Fixed
 
