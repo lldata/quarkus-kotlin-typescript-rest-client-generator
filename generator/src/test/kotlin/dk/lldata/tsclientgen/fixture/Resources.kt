@@ -103,7 +103,8 @@ class BooksResource {
  * every leaf takes, so the property and the parameter share a spelling and must stay distinct.
  *
  * `HEAD` answers with headers and no body by definition, so the only honest return type for it is
- * a bodyless one. Nothing yet enforces that — see the issue linked from the PR.
+ * a bodyless one. Nothing enforces that, deliberately: the generator believes the resource rather
+ * than validating its shape, the same as every other verb here. See #28.
  */
 @TypeScriptApi
 @Path("/api/documents/{id}")
