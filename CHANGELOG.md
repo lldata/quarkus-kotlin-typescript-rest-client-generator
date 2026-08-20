@@ -123,6 +123,20 @@ from `./gradlew publishToMavenLocal` — see the README.
   and the shipped runtime. Each is now built as structure the writer can lay out.
 
 ### Changed
+- **TypeScriptPoet comes from Maven Central again: `dk.lldata:typescriptpoet:2.0.0`.** The
+  dependency was a JitPack commit while 2.0.0 was unreleased, and Central will not accept a JitPack
+  coordinate as a dependency — so that line, not any gap in the library, was what blocked every
+  release from here. It is gone, and with it the `jitpack.io` repository the build declared to
+  resolve it. Nothing emitted changes: the committed client regenerates byte for byte.
+
+- **The generator compiles against `jakarta.ws.rs-api` 4.0.0**, up from 3.1.0. This landed as an
+  ordinary dependency bump and should have said so at the time. The artifact is `compileOnly` and
+  absent from the published POM, so it is not a version anyone resolves — it is the minimum API the
+  generator assumes is on the classpath when it runs, and Jakarta REST 4.0 is Jakarta EE 11. In
+  practice the floor moves with the platform: the example builds against Quarkus 3.38, which brings
+  4.0 itself, and that is the oldest combination this library is tested with. A consumer on an
+  older Quarkus should stay on `1.0.0-alpha4`.
+
 
 - **The example's backend is split into `api`, `api.stamp` and `domain`**, which it had outgrown as
   one flat package. The line falls where the example already drew it: `api` holds the things that
