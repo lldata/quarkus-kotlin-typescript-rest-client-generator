@@ -175,7 +175,6 @@ project has adopted.
 | --- | --- |
 | `TYPED_REQUEST_BODY` | A `String` body, which the client can only be told is `string`. |
 | `TOP_LEVEL_RESPONSE_TYPE` | A nested class, which has no flat TypeScript name. |
-| `RESPONSE_NAMING` | A payload that is neither `*Response` nor declared shared vocabulary. |
 | `SEALED_SUBTYPES_COMPLETE` | A `@JsonSubTypes` list that has drifted from the sealed subclasses, silently dropping an arm. |
 | `VARIANT_LITERAL_IN_DISCRIMINATOR` | A variant mapped to a value its discriminator cannot hold. |
 | `USABLE_PATH_SEGMENTS` | A segment that is not a usable member name, or two nodes with one factory name. |

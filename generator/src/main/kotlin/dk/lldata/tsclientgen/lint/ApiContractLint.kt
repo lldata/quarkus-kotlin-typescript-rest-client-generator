@@ -1,7 +1,6 @@
 package dk.lldata.tsclientgen.lint
 
 import dk.lldata.tsclientgen.GeneratorOptions
-import dk.lldata.tsclientgen.TypeScriptValueObject
 import dk.lldata.tsclientgen.emit.ApiNode
 import dk.lldata.tsclientgen.emit.TypeScriptClientEmitter
 import dk.lldata.tsclientgen.emit.TypeScriptTypes
@@ -11,7 +10,6 @@ import dk.lldata.tsclientgen.model.Endpoint
 import java.lang.reflect.Modifier
 import kotlin.reflect.KClass
 import kotlin.reflect.full.memberProperties
-import kotlin.reflect.full.superclasses
 
 /**
  * The properties the generator depends on, asserted over the API model rather than re-derived by
@@ -44,7 +42,6 @@ class ApiContractLint(
         buildList {
             addAll(typedRequestBodies())
             addAll(topLevelResponseTypes())
-            addAll(responseNaming())
             addAll(sealedSubtypesComplete())
             addAll(variantLiteralsInDiscriminator())
             addAll(usablePathSegments())
@@ -93,35 +90,6 @@ class ApiContractLint(
                     endpoint.id(),
                     "reaches ${klass.qualifiedName}, which is nested in ${klass.java.enclosingClass.simpleName} and has no flat " +
                         "TypeScript name. Lift it to a top-level class.",
-                )
-            }
-
-    /**
-     * These names become the exported TypeScript symbols, so an inconsistency that never mattered
-     * internally becomes part of the client's public surface.
-     *
-     * A type whose only role is being one endpoint's response is named `*Response`. A value object
-     * shared across calls is not that, so it carries `@TypeScriptValueObject` and keeps its own
-     * name — exempt by construction rather than by a list somebody maintains.
-     *
-     * Enums and value classes are exempt by kind: neither is a response, and both are emitted as
-     * scalars rather than named object shapes. A sealed variant inherits its base's decision — it
-     * is emitted as an arm of that union, never named on its own.
-     */
-    private fun responseNaming(): List<ApiContractViolation> =
-        clientSurface
-            .flatMap { it.responseDtos() }
-            .distinct()
-            .filterNot { types.isEnum(it) || types.isValueClass(it) }
-            .filterNot { klass -> klass.superclasses.any { it.isSealed } }
-            .filterNot { it.java.isAnnotationPresent(TypeScriptValueObject::class.java) }
-            .filterNot { it.simpleName?.endsWith("Response") == true }
-            .map {
-                ApiContractViolation(
-                    ApiContractRule.RESPONSE_NAMING,
-                    it.simpleName ?: it.toString(),
-                    "is emitted into the client but is named neither `*Response` nor marked @TypeScriptValueObject. " +
-                        "Rename it, or say it is shared vocabulary.",
                 )
             }
 
@@ -502,7 +470,6 @@ class ApiContractLint(
 enum class ApiContractRule {
     TYPED_REQUEST_BODY,
     TOP_LEVEL_RESPONSE_TYPE,
-    RESPONSE_NAMING,
     SEALED_SUBTYPES_COMPLETE,
     VARIANT_LITERAL_IN_DISCRIMINATOR,
     USABLE_PATH_SEGMENTS,

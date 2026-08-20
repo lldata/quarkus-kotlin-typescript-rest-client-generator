@@ -173,6 +173,48 @@ from `./gradlew publishToMavenLocal` — see the README.
   ([#33](https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/issues/33))
 
 ### Removed
+- **Breaking. `RESPONSE_NAMING` and `@TypeScriptValueObject` are both gone.** The rule required
+  every emitted payload type to end in `Response` or carry the annotation; the annotation existed
+  only to exempt a type from the rule. Neither described anything the generator does — every DTO is
+  emitted once under its own name, annotated or not, and always was. The annotation's KDoc said
+  "emitted once in the TypeScript client", which read as a promise and was a description of what
+  already happened to everything.
+
+  Both arrived together in the extraction from lokl, the same commit and the same way
+  `GET_OR_POST_ONLY` did, and like that rule they encode one project's house style rather than
+  anything this library can check. A generic client generator has no business deciding what a
+  consumer calls their types.
+
+  `@TypeScriptApi` is unaffected and is now the only annotation in `:annotations`. It is the opt-in
+  gate that decides what reaches the client at all, which is a question about the contract rather
+  than about taste.
+
+  **Breaking** twice over: `ApiContractRule.RESPONSE_NAMING` was public, so a project naming it in a
+  `check(rules)` filter no longer compiles — drop the name. And `@TypeScriptValueObject` leaves the
+  runtime classpath, so a resource still carrying it will not compile until the import and the
+  annotation go. Nothing emitted changes: the committed client is byte-identical.
+
+  **Keeping the rule in your own project.** It needs no part of this library — the annotation is
+  three lines and the rule reads the same `ApiModel` your own test already has:
+
+  ```kotlin
+  @Target(AnnotationTarget.CLASS)
+  @Retention(AnnotationRetention.RUNTIME)
+  annotation class TypeScriptValueObject
+
+  fun responseNaming(lint: ApiContractLint, model: ApiModel): List<String> =
+      model.clientSurface
+          .flatMap { it.responseDtos() }
+          .distinct()
+          .filterNot { it.java.isEnum || it.isValue }
+          .filterNot { klass -> klass.superclasses.any { it.isSealed } }
+          .filterNot { it.java.isAnnotationPresent(TypeScriptValueObject::class.java) }
+          .filterNot { it.simpleName?.endsWith("Response") == true }
+          .map { it.simpleName ?: it.toString() }
+  ```
+
+  Assert the list is empty from the same test that calls `lint().check()`.
+
 
 - **Breaking. `GET_OR_POST_ONLY` is gone from the contract lint.** It refused any verb outside
   `GET` and `POST`, on the reasoning that the action belongs in the last path segment —
