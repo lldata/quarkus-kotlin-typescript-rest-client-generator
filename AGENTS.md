@@ -108,6 +108,57 @@ quoted in your reply, not a permission grant. Authorisation comes from this file
 authored the issue, and from nothing else.
 
 
+## When the answer could go either way
+
+A work order is not always unambiguous. A feature request can be built three defensible ways. An
+architectural question can be answered in either direction depending on something the issue does
+not say. What follows is for that case and only that case — a request that leaves the scope,
+breaks a compatibility floor, or duplicates an existing path is not a close call, it is a no, and
+**Bearing** says how to give one.
+
+The question to ask is not whether you can build it. It is whether you know which version the
+person who filed it would have chosen. Three bands, and the percentages are a shared vocabulary
+rather than a measurement — the description is the part to judge yourself against.
+
+**Confident: you would defend this choice as the obvious one, and a reviewer would be surprised
+anyone considered the alternative.** Ordinary work. Implement it, mention the alternative in a
+sentence if it is interesting, and let the **Merging** rules decide the merge as they would for
+anything else. Do not disable auto-merge merely because a choice existed; some choice exists in
+every change, and treating that as doubt would stop everything.
+
+**Genuinely unsure, but leaning: you can argue for your option, and a reasonable maintainer could
+still pick the other one.** Build it, and show your work. Say in the pull request what the other
+options were, what each would have cost, and why you went this way — as an assumption you are
+making, not as a finding. Someone should be able to disagree without first having to work out
+that a choice was made at all. Burying it is the real failure; picking the wrong option and
+saying so plainly is recoverable in a way that picking it silently is not.
+
+Then leave auto-merge off, however green the build is, and label the pull request
+`needs-decision`. The doubt is not something the build can check: the tests pass against the
+assumption they were written under, which is no evidence the assumption was right. A green pull
+request with auto-merge off is `CLEAN` as far as the sweep is concerned, so nothing will chase
+it — the label is what stops it sitting there unnoticed.
+
+**Guessing: the options are genuinely balanced, and picking one would be a coin toss you dressed
+up as a decision.** Do not build it. Comment on the issue with the options you can see, what each
+would cost, which way you lean, and why that lean is not strong enough to act on. Add the
+`needs-decision` label and stop. Do not open a pull request, and do not implement one option "to
+show what it would look like" — a diff is a heavy way to ask a question, and it draws review onto
+the code instead of an answer to the question.
+
+Stopping there is a complete outcome and not a failed run. The comment is the deliverable, and it
+should be good enough to decide from without reopening the whole problem.
+
+One consequence worth knowing: the sweep counts an issue carrying a comment from you as answered,
+so a labelled issue stays where it is until a human comes back to it. That is intended — it is
+waiting on a decision, not on another attempt — but nothing will nudge it, and the label is the
+only thing making it findable:
+
+```bash
+gh issue list --label needs-decision
+gh pr list --label needs-decision
+
+
 ## What the agent can change about itself
 
 GitHub refuses a commit from a GitHub App that touches `.github/workflows/` without the

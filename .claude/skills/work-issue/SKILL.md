@@ -57,6 +57,17 @@ is a complete and successful outcome for this run — do not open a PR to prove 
 If it needs a breaking change, say so on the issue and stop. Breaking changes need a human to
 agree before the work, not after.
 
+**Then decide which way it should go.** Some issues have one obvious implementation and some do
+not — a feature request buildable three defensible ways, an architectural choice that turns on
+something the issue never says. The test is not whether you can build it, but whether you know
+which version was wanted. If you would defend your choice as the obvious one, carry on as
+normal. If you are leaning but a reasonable maintainer could pick differently, build it, set out
+the alternatives and your assumption in the pull request, leave auto-merge off and label it
+`needs-decision`. If it is a coin toss, comment with the options and what each costs, label the
+issue `needs-decision`, and stop without a pull request — that is a finished run, not a failed
+one. `AGENTS.md`, **When the answer could go either way**, is the rule; this is the reminder
+that it applies here, before step 3, and not in review.
+
 ## 3. Implement
 
 - Make the failing test pass, and nothing more. Resist adjacent tidying; it makes the PR harder
@@ -102,6 +113,8 @@ The PR description covers, briefly:
 - Any change to the emitted output, shown as the diff to the example's committed client. That
   diff is the statement of what you did to consumers.
 - What you verified: name both halves of the gate, and say plainly if either skipped.
+- Any assumption you had to make about which way the issue should go, what the alternatives
+  were, and what each would have cost.
 
 Then `Closes #<n>`, and say in a short issue comment that the PR is up.
 
@@ -128,8 +141,12 @@ gh pr merge <pr> --disable-auto
 ```
 
 If it does not qualify — a breaking change, a rules or release-path file, something you fixed
-without understanding why it worked — leave auto-merge off and say plainly in the PR which
-condition it failed. That sentence is the most useful thing in the pull request.
+without understanding why it worked, an assumption about which way the issue should go that a
+reasonable maintainer could have taken the other way — leave auto-merge off and say plainly in
+the PR which condition it failed. That sentence is the most useful thing in the pull request.
+Where the reason is an assumption, add the `needs-decision` label too: a green pull request with
+auto-merge off looks `CLEAN` to the sweep, so nothing will chase it and the label is what keeps
+it findable.
 
 Do not tag, do not publish, do not approve your own pull request.
 
