@@ -9,6 +9,8 @@ from `./gradlew publishToMavenLocal` — see the README.
 
 ## [Unreleased]
 
+## [1.0.0-alpha5] — 2026-08-20
+
 ### Added
 
 - **A resource can reach the client surface by name, not only by `@TypeScriptApi`.**
