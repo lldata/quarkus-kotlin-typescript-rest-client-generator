@@ -1,7 +1,10 @@
 name: Agent — work an issue
 
-# A new issue from a trusted author is a work order: the agent implements it and opens a pull
-# request. An issue from anyone else stops at the authorisation job, which records why in the
+# A new issue from a trusted author is a work order, but this workflow no longer starts that
+# work when the issue opens. `agent-tend.yml` does, one issue at a time, oldest first, waking on
+# each merge so the next issue starts from a `main` containing the last one. What is left here
+# is answering an issue from an untrusted author, and a manual dispatch for forcing one specific
+# issue. An issue from anyone else stops at the authorisation job, which records why in the
 # run's annotations rather than failing.
 #
 # GitHub applies a second gate of its own before this ever matters: claude-code-action rejects
@@ -35,6 +38,13 @@ jobs:
     outputs:
       trusted: ${{ steps.check.outputs.trusted }}
       issue: ${{ steps.check.outputs.issue }}
+
+    # Declared rather than inherited. The workflow sets `permissions: {}`, which is every scope
+    # set to none rather than a default to build on, so a job that names nothing gets a token
+    # that cannot read the repository at all — `actions/checkout` fails with the thoroughly
+    # misleading "Repository not found". This job only reads `.github/trusted-authors`.
+    permissions:
+      contents: read
 
     steps:
 
@@ -141,7 +151,12 @@ jobs:
 
   work:
     needs: [ authorise ]
-    if: needs.authorise.outputs.trusted == 'true'
+    # By hand only. A run started by `issues: [opened]` is pinned to one issue, and issues filed
+    # close together evict all but the newest from the concurrency group's single pending slot —
+    # silently, with no job ever starting and nothing left recording that the issue was owed a
+    # run. The sweep claims issue work instead: it carries no instructions, so an evicted sweep
+    # loses nothing that the next one will not find by reading the repository.
+    if: needs.authorise.outputs.trusted == 'true' && github.event_name == 'workflow_dispatch'
 
     runs-on: ubuntu-latest
     timeout-minutes: 60
