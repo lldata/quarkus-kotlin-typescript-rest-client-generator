@@ -157,6 +157,21 @@ from `./gradlew publishToMavenLocal` — see the README.
   coordinate, which is what keeps a Central release blocked — the group goes back to
   `dk.lldata:typescriptpoet` when 2.0.0 is cut there.
 
+- **The emitter adopts the TypeScriptPoet APIs the `1c7fe5d` bump unblocked, in
+  `TypeScriptClientEmitter`.** Object spread (`{ ...baseConfig }`), the branded scalar's type
+  predicates (`(raw: Raw) => raw is T`, `raw is T`), and the parameterized `WireScalar<Raw, T>` /
+  `CheckedScalar<Raw, T>` companion types were all spelled as raw strings handed to
+  `TypeName.implicit`, which the writer cannot see into — no imports, no renaming on collision, one
+  opaque token when it lays out a line. Each is now built structurally
+  (`spread`, `TypeName.lambda`, `TypePredicate.isType`, `FunctionSpec.Builder.returnsIs`,
+  `TypeName.parameterizedType`), which removes a class of bug — an imported symbol appearing inside
+  one of these strings used to risk a file that silently failed to compile — rather than tidying
+  for its own sake. The default client instance's `const` also drops its explicit
+  `ReturnType<typeof createApi>` annotation now that TypeScriptPoet allows a typeless `const`, since
+  inference already said the same thing: `export const api = createApi();` rather than
+  `export const api: ReturnType<typeof createApi> = createApi();`.
+  ([#33](https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/issues/33))
+
 ### Removed
 
 - **Breaking. `GET_OR_POST_ONLY` is gone from the contract lint.** It refused any verb outside

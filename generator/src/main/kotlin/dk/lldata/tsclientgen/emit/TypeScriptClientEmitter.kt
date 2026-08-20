@@ -11,6 +11,7 @@ import dk.lldata.typescriptpoet.FileSpec
 import dk.lldata.typescriptpoet.Modifier
 import dk.lldata.typescriptpoet.ObjectLiteral
 import dk.lldata.typescriptpoet.TypeName
+import dk.lldata.typescriptpoet.TypePredicate
 import dk.lldata.typescriptpoet.dsl.argument
 import dk.lldata.typescriptpoet.dsl.arrow
 import dk.lldata.typescriptpoet.dsl.body
@@ -29,6 +30,7 @@ import dk.lldata.typescriptpoet.dsl.parameter
 import dk.lldata.typescriptpoet.dsl.property
 import dk.lldata.typescriptpoet.dsl.returns
 import dk.lldata.typescriptpoet.dsl.shorthand
+import dk.lldata.typescriptpoet.dsl.spread
 import dk.lldata.typescriptpoet.dsl.type
 import dk.lldata.typescriptpoet.dsl.typeArgument
 import dk.lldata.typescriptpoet.dsl.typeParam
@@ -106,7 +108,9 @@ class TypeScriptClientEmitter(
                 }
                 for (node in ApiNode.of(endpoints, options.rootPath).descendants()) nodeFactory(node)
                 options.defaultInstanceName?.let { name ->
-                    property(name, TypeName.implicit("ReturnType<typeof ${ApiNode.ROOT_FACTORY}>"), Modifier.EXPORT, Modifier.CONST) {
+                    // No type: `export const api = createApi();` is reachable and inference does
+                    // better than `ReturnType<typeof createApi>` did.
+                    property(name, Modifier.EXPORT, Modifier.CONST) {
                         initializer("${ApiNode.ROOT_FACTORY}()")
                     }
                 }
@@ -124,17 +128,19 @@ class TypeScriptClientEmitter(
      */
     private fun FileSpec.Builder.companionInterfaces(branded: List<Scalar.Branded>) {
         if (branded.isEmpty()) return
+        val raw = TypeName.typeVariable("Raw")
+        val t = TypeName.typeVariable("T")
         interfaze("WireScalar", Modifier.EXPORT) {
             typeParam("Raw")
-            typeParam("T", TypeName.bound(TypeName.implicit("Raw")))
-            property("from", TypeName.implicit("(raw: Raw) => T"))
+            typeParam("T", TypeName.bound(raw))
+            property("from", TypeName.lambda(mapOf("raw" to raw), t))
         }
         if (branded.any { it.pattern != null }) {
             interfaze("CheckedScalar", Modifier.EXPORT) {
                 typeParam("Raw")
-                typeParam("T", TypeName.bound(TypeName.implicit("Raw")))
-                extends(TypeName.implicit("WireScalar<Raw, T>"))
-                property("is", TypeName.implicit("(raw: Raw) => raw is T"))
+                typeParam("T", TypeName.bound(raw))
+                extends(TypeName.parameterizedType(TypeName.standard("WireScalar"), raw, t))
+                property("is", TypeName.lambda(mapOf("raw" to raw), TypePredicate.isType("raw", t)))
             }
         }
     }
@@ -153,9 +159,14 @@ class TypeScriptClientEmitter(
         val name = scalar.name
         val raw = scalar.spelling
         val pattern = scalar.pattern
-        val companion = if (pattern == null) "WireScalar<$raw, $name>" else "CheckedScalar<$raw, $name>"
+        val companion =
+            TypeName.parameterizedType(
+                TypeName.standard(if (pattern == null) "WireScalar" else "CheckedScalar"),
+                TypeName.implicit(raw),
+                TypeName.implicit(name),
+            )
 
-        property(name, TypeName.implicit(companion), Modifier.EXPORT, Modifier.CONST) {
+        property(name, companion, Modifier.EXPORT, Modifier.CONST) {
             initializer(
                 "%L",
                 obj {
@@ -185,7 +196,7 @@ class TypeScriptClientEmitter(
                             "is",
                             arrow("is") {
                                 parameter("raw", TypeName.implicit(raw))
-                                returns(TypeName.implicit("raw is $name"))
+                                returnsIs("raw", TypeName.implicit(name))
                                 // Built as a call rather than spelled, so the writer can break the
                                 // argument list. A regex literal is one token and is often wider
                                 // than the print width on its own — this one is 80 characters — so
@@ -293,19 +304,15 @@ class TypeScriptClientEmitter(
      * The caller's own headers spread last, so they win. That is not a preference — the runtime
      * already spreads a per-call `options.headers` over `config.headers`, and a config-level
      * override that lost while a per-call one won would be a rule nobody could keep in their head.
-     *
-     * The two spreads go in as shorthand members because the writer has no notion of a spread. It
-     * lays them out correctly, since it only needs to see member boundaries to break on them, but
-     * modelling `...x` belongs in TypeScriptPoet rather than here.
      */
     private fun stampedConfig(header: String): ObjectLiteral =
         obj {
-            shorthand("...baseConfig")
+            spread("baseConfig")
             property(
                 "headers",
                 obj {
                     property(TypeScriptNames.member(header), "%L", "API_STAMP")
-                    shorthand("...baseConfig.headers")
+                    spread("baseConfig.headers")
                 },
             )
         }
@@ -385,11 +392,11 @@ class TypeScriptClientEmitter(
 
         property(
             verb.lowercase(),
-            // The arrow is anonymous, so its builder name is a label and never reaches the output.
-            // Passing the verb through would be the tidier read, except that Poet validates the
-            // name as an identifier and `delete` is a reserved word — while `{ delete: … }` is a
-            // perfectly ordinary property. Naming it here would refuse a DELETE endpoint outright.
-            arrow {
+            // The arrow's builder name is a label and never reaches the output — it is attached to
+            // an object-literal property, not declared as a named function — so naming it after the
+            // verb changes nothing observable. Poet used to refuse `delete` as that name, a reserved
+            // word; it no longer does, so there is no reason left to leave it anonymous.
+            arrow(verb.lowercase()) {
                 endpoint.body?.let { parameter("body", types.typeOf(it.type)) }
                 if (endpoint.queryParams.isNotEmpty()) {
                     parameter("args", argsObjectType(endpoint), optional = allOptional)

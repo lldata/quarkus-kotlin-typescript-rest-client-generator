@@ -126,7 +126,7 @@ class TypeScriptClientEmitterTest {
 
     @Test
     fun `emits a module-level instance only when one is asked for`() {
-        whole shouldContain "export const api: ReturnType<typeof createApi> = createApi();"
+        whole shouldContain "export const api = createApi();"
 
         val serverSide = TypeScriptClientEmitter(testOptions.copy(defaultInstanceName = null)).emit(model.clientSurface)
         serverSide shouldNotContain "export const api"
