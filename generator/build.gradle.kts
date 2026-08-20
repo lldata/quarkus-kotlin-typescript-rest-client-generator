@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.plugin.getKotlinPluginVersion
+
 plugins {
     kotlin("jvm")
     `java-library`
@@ -15,7 +17,12 @@ dependencies {
     // this adds the Kotlin DSL, the object-literal getter a lazy call tree is made of, and a writer
     // that breaks a call's argument list on width.
     api("dk.lldata:typescriptpoet:2.0.0")
-    api(kotlin("reflect"))
+    // Versioned explicitly. `kotlin("reflect")` alone emits a dependency with no `<version>` in the
+    // POM and puts the number in `dependencyManagement` instead, which the Central Portal rejects
+    // during validation — it was what failed the 1.0.0-alpha5 deployment. Taken from the applied
+    // plugin rather than written as a literal, so it cannot drift from the version
+    // `settings.gradle.kts` pins and Dependabot bumps.
+    api(kotlin("reflect", getKotlinPluginVersion()))
 
     // Read from the consumer's classes, never loaded by this library on its own: whichever versions
     // the consuming project compiles against are the ones the annotations are read from.
