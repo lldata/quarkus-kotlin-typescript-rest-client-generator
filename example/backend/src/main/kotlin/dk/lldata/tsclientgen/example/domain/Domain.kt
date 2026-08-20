@@ -1,12 +1,10 @@
 package dk.lldata.tsclientgen.example.domain
 
 import com.fasterxml.jackson.annotation.JsonValue
-import dk.lldata.tsclientgen.TypeScriptValueObject
 import java.time.Instant
 
 // The domain, which is also the wire vocabulary. There is no second set of types that exist only to
-// be serialized: a `Book` is a book, and `@TypeScriptValueObject` is how it says it keeps its own
-// name in the client rather than being one endpoint's `*Response`.
+// be serialized: a `Book` is a book, and it keeps that name in the client.
 
 /** A `@JvmInline value class` is a scalar on the wire — `export type Isbn = string`. */
 @JvmInline
@@ -65,14 +63,12 @@ enum class BorrowOutcome(
     fun jsonValue(): String = wireValue
 }
 
-@TypeScriptValueObject
 data class Shelf(
     val slug: ShelfSlug,
     val name: String,
     val bookCount: Int,
 )
 
-@TypeScriptValueObject
 data class Book(
     val isbn: Isbn,
     val title: String,

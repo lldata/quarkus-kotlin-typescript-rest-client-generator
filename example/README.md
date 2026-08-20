@@ -31,9 +31,9 @@ the generator treats specially: two flavours of `@JsonValue` enum, value classes
 `@JsonSubTypes` mapping.
 
 The split is worth noticing. `Book` and `Shelf` are the domain *and* the wire — there is no
-`BookDto` shadowing a `Book`, and `@TypeScriptValueObject` is how they keep their own names instead
-of being renamed `*Response`. Payloads.kt holds only the shapes that exist because a call has to
-answer with more than a book; `GET /api/shelves` needs none of them and answers with `List<Shelf>`.
+`BookDto` shadowing a `Book`, and they keep their own names in the client. Payloads.kt holds only
+the shapes that exist because a call has to answer with more than a book; `GET /api/shelves` needs
+none of them and answers with `List<Shelf>`.
 
 **2. The rules** —
 [Catalogue.kt](backend/src/main/kotlin/dk/lldata/tsclientgen/example/Catalogue.kt). What a search

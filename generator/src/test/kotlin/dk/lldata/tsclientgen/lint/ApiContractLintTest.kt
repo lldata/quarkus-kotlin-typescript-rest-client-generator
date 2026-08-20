@@ -179,12 +179,6 @@ class ApiContractLintTest {
         subjectsFor(ApiContractRule.TOP_LEVEL_RESPONSE_TYPE) shouldContainExactly listOf("BrokenResource.nested")
     }
 
-    /** `*Response`, or shared vocabulary that says so. A value object is exempt by construction. */
-    @Test
-    fun `catches a payload named neither Response nor a value object`() {
-        subjectsFor(ApiContractRule.RESPONSE_NAMING) shouldContainExactly listOf("Nested", "PlainPayload")
-    }
-
     /** Adding a variant without mapping it would silently drop an arm from the client. */
     @Test
     fun `catches a sealed union whose mapping is not exactly its subclasses`() {
@@ -297,7 +291,7 @@ class ApiContractLintTest {
                 brokenOptions,
             )
 
-        lint.check(ApiContractRule.entries.toSet() - ApiContractRule.SHADOWS_A_GLOBAL - ApiContractRule.RESPONSE_NAMING)
+        lint.check(ApiContractRule.entries.toSet() - ApiContractRule.SHADOWS_A_GLOBAL)
     }
 
     /**

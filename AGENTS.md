@@ -34,7 +34,7 @@ general layout engine.
 Two artifacts are published, versioned together from the single `version=` line in
 `gradle.properties`:
 
-- **`:annotations`** — the two annotations that mark what belongs in a client. These land on a
+- **`:annotations`** — the annotation that marks what belongs in a client. It lands on a
   consumer's *runtime* classpath, so this module has no dependencies at all, deliberately. Never
   add one.
 - **`:generator`** — the generator itself, which a consumer uses at build or test time.

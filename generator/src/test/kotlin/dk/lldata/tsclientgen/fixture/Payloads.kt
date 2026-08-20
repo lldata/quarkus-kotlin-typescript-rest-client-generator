@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonValue
 import com.fasterxml.jackson.databind.PropertyNamingStrategies
 import com.fasterxml.jackson.databind.annotation.JsonNaming
-import dk.lldata.tsclientgen.TypeScriptValueObject
 import java.time.Instant
 
 /**
@@ -69,7 +68,6 @@ enum class BorrowOutcome(
 }
 
 /** Shared vocabulary rather than one endpoint's answer, so it keeps its own name. */
-@TypeScriptValueObject
 data class BookDto(
     val isbn: Isbn,
     val title: String,
