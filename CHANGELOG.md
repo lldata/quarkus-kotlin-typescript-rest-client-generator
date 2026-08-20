@@ -143,6 +143,20 @@ from `./gradlew publishToMavenLocal` — see the README.
   `@JsonTypeInfo`, `@JsonSubTypes`, `@JsonIgnore`, `@JsonInclude`) have been stable for years, so
   the practical floor has not moved. Quarkus 3.38 brings 2.22 in any case.
 
+- **TypeScriptPoet moves to `1c7fe5d`**, which closes the four gaps this emitter was working
+  around. Object spread has a structured form (`ObjectLiteral.Builder.addSpread`), a type predicate
+  can appear in a function type, a `const` can be left to inference, and a reserved word can name a
+  class or interface method. Each of those had a workaround here that spelled the construct as a
+  string, and a string carries no imports — so each was one imported symbol away from emitting a
+  file that does not compile.
+
+  Nothing emitted changes yet: the committed client regenerates byte for byte against the new
+  writer. Adopting the new APIs is separate work, and it is where the benefit actually lands.
+
+  The dependency is `api`, so this is the version a consumer resolves. It is still a JitPack
+  coordinate, which is what keeps a Central release blocked — the group goes back to
+  `dk.lldata:typescriptpoet` when 2.0.0 is cut there.
+
 ### Removed
 
 - **Breaking. `GET_OR_POST_ONLY` is gone from the contract lint.** It refused any verb outside
