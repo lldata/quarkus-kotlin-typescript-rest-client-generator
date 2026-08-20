@@ -37,16 +37,19 @@ stuck_prs=$(gh pr list --state open --json number,mergeStateStatus \
 #   Another attempt cannot produce the missing answer, and AGENTS.md says so under **When the
 #   answer could go either way**. The label is what makes it findable in the meantime.
 #
-#   An issue filed by a bot is a report, not a work order. The standing "Release readiness"
-#   issue is the case that matters: the agent files it as `app/claude`, its own workflow
-#   rewrites it, and nothing is owed a pull request for it. Matched on `is_bot` rather than on
-#   the login, because the app's login is `app/claude` and a literal would be one rename from
-#   silently matching nothing.
-silent_issues=$(gh issue list --state open --json number,comments,labels,author \
+#   The standing "Release readiness" issue is a rolling report, not a work order: the
+#   release-readiness workflow rewrites it in place, and nothing is owed a pull request for it.
+#   Matched on the exact title, the same way that workflow finds it to rewrite.
+#
+#   Only that one. An earlier version of this skipped every bot-filed issue, which also skipped
+#   "Agent sweep is failing" — the notice this workflow files when a run dies. That is the alarm
+#   saying the automation is quietly not working, so having the survey ignore it is precisely
+#   backwards: the one issue that most needs picking up was the one being dropped.
+silent_issues=$(gh issue list --state open --json number,comments,labels,title \
   --jq '[.[]
          | select([.comments[].author.login] | index("claude") | not)
          | select([.labels[].name] | index("needs-decision") | not)
-         | select(.author.is_bot != true)
+         | select(.title != "Release readiness")
          | .number] | sort | join(", ")')
 
 # An issue already being worked has no comment on it yet either, so it looks exactly like one
