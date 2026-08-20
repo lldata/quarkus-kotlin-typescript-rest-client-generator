@@ -26,7 +26,7 @@ dependencies {
 
     // Read from the consumer's classes, never loaded by this library on its own: whichever versions
     // the consuming project compiles against are the ones the annotations are read from.
-    compileOnly("jakarta.ws.rs:jakarta.ws.rs-api:3.1.0")
+    compileOnly("jakarta.ws.rs:jakarta.ws.rs-api:4.0.0")
 
     // Through the BOM rather than a literal, because Jackson's modules stopped sharing a version
     // number: `jackson-annotations` publishes 2.21 and 2.22, `jackson-databind` publishes 2.22.0
@@ -37,7 +37,7 @@ dependencies {
     compileOnly(platform("com.fasterxml.jackson:jackson-bom:2.22.2"))
     compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
-    testImplementation("jakarta.ws.rs:jakarta.ws.rs-api:3.1.0")
+    testImplementation("jakarta.ws.rs:jakarta.ws.rs-api:4.0.0")
     testImplementation(platform("com.fasterxml.jackson:jackson-bom:2.22.2"))
     testImplementation("com.fasterxml.jackson.core:jackson-annotations")
     // Only so a fixture can carry `@JsonNaming`, which lives in databind. The library itself reads
@@ -45,7 +45,7 @@ dependencies {
     testImplementation("com.fasterxml.jackson.core:jackson-databind")
     // Only so the fixtures can declare `RestResponse<T>` and prove the wrapper is unwrapped by the
     // real class rather than by a stand-in with the same name.
-    testImplementation("io.quarkus.resteasy.reactive:resteasy-reactive-common:3.38.0")
+    testImplementation("io.quarkus.resteasy.reactive:resteasy-reactive-common:3.38.2")
     testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
     testImplementation("io.kotest:kotest-assertions-core-jvm:6.2.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
