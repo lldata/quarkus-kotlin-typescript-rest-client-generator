@@ -99,6 +99,19 @@ from `./gradlew publishToMavenLocal` — see the README.
 
 ### Fixed
 
+- **`HEAD` and `OPTIONS` calls did not type-check.** `#27` made the generator emit every JAX-RS
+  verb, but the shipped `client-runtime.ts` still typed `ApiRequest.method` as
+  `"GET" | "POST" | "PUT" | "PATCH" | "DELETE"` — five of the seven. No fixture exercised the gap,
+  because the generator's own tests assert on the emitted TypeScript as text and never compile it;
+  only `npm run typecheck` against a real call site catches this, and nothing called `head` or
+  `options` before now. Found while giving `BooksResource` a `HEAD /{isbn}` endpoint per
+  [#28](https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/issues/28), which
+  the generator believes exactly as declared — `RestResponse<Void>`, emitted as `Promise<void>` —
+  rather than validating that a `HEAD` response is bodyless. That validation is deliberately not
+  this library's job: the generator trusts the resource, and a `HEAD` that lies about its body is a
+  resource bug like any other undescribable shape, not something worth spending contract-lint code
+  on when the example can simply show the correct declaration.
+
 - **The client imported its two runtime types as values, which two ordinary consumer setups
   reject.** `ApiConfig` and `RequestOptions` are types, and the emitted import did not say so.
   Under `verbatimModuleSyntax` the import is emitted as written, so `tsc` fails with TS1484; under
