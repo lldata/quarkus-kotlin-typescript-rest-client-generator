@@ -1,0 +1,20 @@
+name: Dependabot auto-merge
+
+# Arms auto-merge on Dependabot's pull requests. The merge itself still waits on the required
+# `build` check and, for the paths CODEOWNERS protects, on review — this bypasses neither. A
+# github-actions bump therefore arms and then waits, which is the intended outcome.
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh pr merge --auto --squash "$PR"
+        env:
+          PR: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
