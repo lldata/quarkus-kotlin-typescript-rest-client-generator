@@ -102,7 +102,8 @@ data class BookSearch(
  * What the catalogue says when it cannot do what was asked.
  *
  * Deliberately not a `WebApplicationException`: which status each of these is worth is the HTTP
- * layer's opinion, and [CatalogueFailureMapper] is where that opinion lives.
+ * layer's opinion, and [dk.lldata.tsclientgen.example.api.CatalogueFailureMapper] is where that
+ * opinion lives.
  */
 sealed class CatalogueFailure(
     message: String,

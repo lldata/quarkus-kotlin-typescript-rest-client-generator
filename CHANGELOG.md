@@ -212,6 +212,21 @@ from `./gradlew publishToMavenLocal` — see the README.
   `export const api: ReturnType<typeof createApi> = createApi();`.
   ([#33](https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/issues/33))
 
+- **Qodana's findings against this repository are down to the ones worth reading.** A steady
+  count of about nineteen had stopped being informative — a real regression would have looked
+  like the eighteen it sat next to. The genuine ones are fixed: two broken KDoc links to a class
+  outside its module (`[ApiContractLint]` in `:annotations`, which cannot see `:generator`) and
+  two to a class in a package a domain type intentionally does not import (now spelled out fully
+  qualified or as plain text rather than a dead link), a vestigial `import
+  dk.lldata.typescriptpoet.dsl.returns` in two emitters left over from `returns` becoming a
+  member function on `FunctionSpec.Builder` in the TypeScriptPoet 2.0.0 bump, `ClientGenerator`'s
+  `readModel` constructor parameter (used only in a property initializer, so it needed no `val`),
+  and two regex patterns in `GeneratorOptions` that concatenated `const val`s where a template
+  reads the same and is shorter. `qodana.yaml` now also turns off `ConvertCallChainIntoSequence`
+  and `DestructuringDeclaration` — both fire on code where the suggested rewrite is worse, not
+  better, and the profile says why. Nothing here changes emitted output.
+  ([#43](https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/issues/43))
+
 ### Removed
 - **Breaking. `RESPONSE_NAMING` and `@TypeScriptValueObject` are both gone.** The rule required
   every emitted payload type to end in `Response` or carry the annotation; the annotation existed

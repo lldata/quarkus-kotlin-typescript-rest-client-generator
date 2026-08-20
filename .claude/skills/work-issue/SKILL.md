@@ -99,6 +99,13 @@ Never open the PR on a red or skipped build. If you cannot get it green, push no
 comment on the issue with what you found and where you got stuck. A truthful dead end is worth
 more than a PR that shifts the debugging onto the reviewer.
 
+There is a third check, later than these two: once the pull request is open, Qodana comments on
+it. It runs against the PR itself, not locally — a genuine pre-push check would mean a Docker run
+on every change, which is a heavy step for what a short wait after pushing catches just as well.
+Read that comment before step 6 arms auto-merge, and fix anything the change introduced. Not "get
+it to zero" — a finding that predates the change is not the change's to carry — just do not add
+to it without noticing.
+
 ## 5. Open the pull request
 
 Branch as `agent/issue-<n>-<short-slug>`. Commit with a message that explains why, in the style

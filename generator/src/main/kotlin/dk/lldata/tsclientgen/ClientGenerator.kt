@@ -29,7 +29,7 @@ import java.io.File
 class ClientGenerator(
     private val options: GeneratorOptions,
     private val formatter: SourceFormatter = SourceFormatter.Passthrough,
-    private val readModel: () -> ApiModel,
+    readModel: () -> ApiModel,
 ) {
     /** The usual entry point: every JAX-RS resource compiled under [classesDir]. */
     constructor(
