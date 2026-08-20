@@ -27,13 +27,22 @@ dependencies {
     // Read from the consumer's classes, never loaded by this library on its own: whichever versions
     // the consuming project compiles against are the ones the annotations are read from.
     compileOnly("jakarta.ws.rs:jakarta.ws.rs-api:4.0.0")
-    compileOnly("com.fasterxml.jackson.core:jackson-annotations:2.17.0")
+
+    // Through the BOM rather than a literal, because Jackson's modules stopped sharing a version
+    // number: `jackson-annotations` publishes 2.21 and 2.22, `jackson-databind` publishes 2.22.0
+    // through 2.22.2. The BOM's Gradle metadata aligns the family to one version, so any pair of
+    // literals resolves to a coordinate that does not exist — 2.22 of databind, or 2.22.2 of
+    // annotations, both 404. The platform is the only version this project can state and the only
+    // one a bump has to move.
+    compileOnly(platform("com.fasterxml.jackson:jackson-bom:2.22.2"))
+    compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
     testImplementation("jakarta.ws.rs:jakarta.ws.rs-api:4.0.0")
-    testImplementation("com.fasterxml.jackson.core:jackson-annotations:2.17.0")
+    testImplementation(platform("com.fasterxml.jackson:jackson-bom:2.22.2"))
+    testImplementation("com.fasterxml.jackson.core:jackson-annotations")
     // Only so a fixture can carry `@JsonNaming`, which lives in databind. The library itself reads
     // it by qualified name and depends on none of this.
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.17.0")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind")
     // Only so the fixtures can declare `RestResponse<T>` and prove the wrapper is unwrapped by the
     // real class rather than by a stand-in with the same name.
     testImplementation("io.quarkus.resteasy.reactive:resteasy-reactive-common:3.38.2")

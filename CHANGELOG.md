@@ -105,6 +105,21 @@ it does, the artifacts are available through `./gradlew publishToMavenLocal` —
   fixed point rather than something Prettier would reformat on contact.
   ([#5](https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/issues/5))
 
+- **Jackson comes from its BOM now, rather than from a version literal per module.** Jackson's
+  modules stopped sharing a version number — `jackson-annotations` publishes 2.21 and 2.22 while
+  `jackson-databind` publishes 2.22.0 through 2.22.2 — and the BOM's Gradle metadata aligns the
+  family to a single version. Any pair of literals therefore resolves to something that does not
+  exist, which is why four separate Jackson bumps failed here with `Could not find
+  com.fasterxml.jackson.core:jackson-databind:2.22`. One `platform(…)` coordinate replaces them and
+  is the only version a bump has to move.
+
+  What this changes for a consumer is small and worth stating anyway: the generator now compiles
+  against `jackson-annotations` 2.22 instead of 2.17.0. That version is `compileOnly` and absent
+  from the published POM — it is the minimum API the generator assumes when it runs, not something
+  anyone resolves — and the annotations it actually reads (`@JsonProperty`, `@JsonValue`,
+  `@JsonTypeInfo`, `@JsonSubTypes`, `@JsonIgnore`, `@JsonInclude`) have been stable for years, so
+  the practical floor has not moved. Quarkus 3.38 brings 2.22 in any case.
+
 ## [1.0.0-alpha4] — 2026-08-15
 
 ### Added
