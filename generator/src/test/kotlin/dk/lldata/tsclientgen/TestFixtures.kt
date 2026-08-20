@@ -3,6 +3,7 @@ package dk.lldata.tsclientgen
 import dk.lldata.tsclientgen.fixture.ApiKeyedResource
 import dk.lldata.tsclientgen.fixture.BooksResource
 import dk.lldata.tsclientgen.fixture.CommentsResource
+import dk.lldata.tsclientgen.fixture.DocumentsResource
 import dk.lldata.tsclientgen.fixture.OpsResource
 import dk.lldata.tsclientgen.model.ApiModel
 import dk.lldata.tsclientgen.model.ApiModelReader
@@ -25,6 +26,7 @@ private val DEFAULT_FIXTURES: Array<Class<*>> =
     arrayOf(
         BooksResource::class.java,
         CommentsResource::class.java,
+        DocumentsResource::class.java,
         OpsResource::class.java,
     )
 

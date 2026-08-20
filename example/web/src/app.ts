@@ -158,8 +158,8 @@ async function remove(isbn: string): Promise<void> {
   const shelf = state.shelf;
   if (shelf == null) return;
   // Bodyless: `Promise<void>`, resolved by the 204 itself.
-  await call(`…books.isbn("${isbn}").remove.post()`, () =>
-    api.shelves.shelf(shelf).books.isbn(isbn).remove.post(),
+  await call(`…books.isbn("${isbn}").delete()`, () =>
+    api.shelves.shelf(shelf).books.isbn(isbn).delete(),
   );
   if (state.detailOf === isbn) detail.innerHTML = "";
   await loadShelves();

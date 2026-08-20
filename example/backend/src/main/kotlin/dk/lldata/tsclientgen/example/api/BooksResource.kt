@@ -13,6 +13,7 @@ import dk.lldata.tsclientgen.example.domain.SortField
 import jakarta.ws.rs.BeanParam
 import jakarta.ws.rs.Consumes
 import jakarta.ws.rs.CookieParam
+import jakarta.ws.rs.DELETE
 import jakarta.ws.rs.DefaultValue
 import jakarta.ws.rs.GET
 import jakarta.ws.rs.POST
@@ -106,16 +107,23 @@ class BooksResource(
     ): BookDetailResponse = catalogue.returnCopy(shelf, isbn)
 
     /**
-     * The one method with a body of its own, and all of it HTTP: removal has nothing to answer with,
-     * so the status is the whole answer. `RestResponse<Void>` is emitted as `Promise<void>`, and the
-     * transport resolves on the status rather than parsing an empty response. A `Unit` return would
-     * say the same thing; this spelling is explicit about the 204.
+     * `DELETE` on the book itself, rather than a `POST` to an action segment. Both idioms are here
+     * on purpose — `returnCopy` above puts the action in the path — because the generator has no
+     * opinion about which a project picks, and the example is where that has to be visible.
+     *
+     * Sharing a node with [detail] is the point: `books.isbn(x)` is both an endpoint and a
+     * namespace, and the verb at the leaf is what lets `get` and `delete` coexist there.
+     *
+     * Removal has nothing to answer with, so the status is the whole answer. `RestResponse<Void>`
+     * is emitted as `Promise<void>`, and the transport resolves on the status rather than parsing
+     * an empty response. A `Unit` return would say the same thing; this spelling is explicit about
+     * the 204.
      *
      * The cookie and the injected `UriInfo` are ambient — the browser sends one and the server
      * supplies the other — so neither is a client argument, and neither is passed on.
      */
-    @POST
-    @Path("/{isbn}/remove")
+    @DELETE
+    @Path("/{isbn}")
     fun remove(
         @PathParam("shelf") shelf: String,
         @PathParam("isbn") isbn: String,

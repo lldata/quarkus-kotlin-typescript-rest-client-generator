@@ -56,16 +56,21 @@ Paths become a lazy tree: a literal segment is a property, a variable one a meth
 sits at the leaf.
 
 ```ts
-api.shelves.get();                                   // GET  /api/shelves
-api.shelves.shelf("attic").books.get({ q: "lisp" }); // GET  /api/shelves/attic/books?q=lisp
-api.shelves.shelf("attic").books.post(body);         // POST /api/shelves/attic/books
+api.shelves.get();                                   // GET    /api/shelves
+api.shelves.shelf("attic").books.get({ q: "lisp" }); // GET    /api/shelves/attic/books?q=lisp
+api.shelves.shelf("attic").books.post(body);         // POST   /api/shelves/attic/books
+api.shelves.shelf("attic").books.isbn(id).delete();  // DELETE /api/shelves/attic/books/{isbn}
 api.shelves.shelf("attic").books.isbn(id).return.post();
 ```
 
 The verb is at the leaf because a node is routinely both an endpoint and a namespace —
 `POST …/books` is create and `…/books/{isbn}` hangs below it. Anywhere else needs a rule for the
 clash; at the leaf needs none. A reserved word is a legal property name, so `…/return` stays
-`…return.post()`.
+`…return.post()` and `DELETE` arrives as `.delete()`.
+
+Every verb JAX-RS ships an annotation for is emitted — `GET`, `POST`, `PUT`, `PATCH`, `DELETE`,
+`HEAD`, `OPTIONS`. Whether an API uses four of them or puts the action in the path instead is the
+project's decision, and the generator has no opinion about it either way.
 
 Every call takes `(…, options?: RequestOptions)` for `signal`, `timeoutMs`, `headers` and `cache`.
 The credential is not there on purpose: it comes from `createApi({ token })` and is closed over by
@@ -164,7 +169,6 @@ project has adopted.
 | `RESPONSE_NAMING` | A payload that is neither `*Response` nor declared shared vocabulary. |
 | `SEALED_SUBTYPES_COMPLETE` | A `@JsonSubTypes` list that has drifted from the sealed subclasses, silently dropping an arm. |
 | `VARIANT_LITERAL_IN_DISCRIMINATOR` | A variant mapped to a value its discriminator cannot hold. |
-| `GET_OR_POST_ONLY` | Four verbs where the action belongs in the path. An opinion — filter it out if you disagree. |
 | `USABLE_PATH_SEGMENTS` | A segment that is not a usable member name, or two nodes with one factory name. |
 | `ENUM_QUERY_PARAM_CONVERTIBLE` | The trap below. |
 | `UNTYPED_PAYLOAD` | An endpoint the generator cannot describe — see *Untyped payloads*. Reported for the whole surface at once, whatever the policy. |

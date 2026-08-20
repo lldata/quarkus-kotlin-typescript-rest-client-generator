@@ -54,6 +54,49 @@ class TypeScriptClientEmitterTest {
         emitted shouldContain "isbn: (isbn: string) =>"
     }
 
+    /**
+     * Every verb JAX-RS ships an annotation for, which is the library's whole policy on verbs:
+     * what the platform can declare, the generator emits. Restricting the set is a decision for
+     * the project consuming this, not for the generator.
+     */
+    @Test
+    fun `emits every verb JAX-RS can declare`() {
+        val emitted =
+            emit(
+                "DocumentsResource.replace",
+                "DocumentsResource.amend",
+                "DocumentsResource.remove",
+                "DocumentsResource.exists",
+                "DocumentsResource.allowed",
+            )
+
+        for (verb in listOf("PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")) {
+            emitted shouldContain "${verb.lowercase()}: ("
+            emitted shouldContain "method: \"$verb\""
+        }
+    }
+
+    /**
+     * `delete` is a reserved word, so it can be a property and never a declaration — the arrow is
+     * built anonymously for exactly that reason, and a named function spec would be refused by the
+     * writer before the file was written.
+     */
+    @Test
+    fun `emits a reserved word as a verb member`() {
+        emit("DocumentsResource.remove") shouldContain "delete: (options?: RequestOptions): Promise<void> =>"
+    }
+
+    /**
+     * `options` names both the verb member and the per-call parameter every leaf takes. The
+     * parameter is the one in scope inside the arrow, so the call still forwards the caller's
+     * options rather than the node's own member.
+     */
+    @Test
+    fun `keeps the options verb distinct from the options parameter`() {
+        emit("DocumentsResource.allowed") shouldContain
+            "options: (options?: RequestOptions): Promise<void> =>"
+    }
+
     /** A reserved word is legal as a property, so the client keeps the name the wire uses. */
     @Test
     fun `keeps a reserved word as a member name`() {

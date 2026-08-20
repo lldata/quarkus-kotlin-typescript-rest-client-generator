@@ -163,10 +163,10 @@ class ApiContractLintTest {
     @Test
     fun `check can be narrowed to the rules a project has adopted`() {
         // Nothing wrong with the paths, so narrowing to that rule passes on a resource that breaks
-        // five others.
+        // several others.
         brokenLint().check(setOf(ApiContractRule.USABLE_PATH_SEGMENTS))
 
-        assertThrows<IllegalStateException> { brokenLint().check(setOf(ApiContractRule.GET_OR_POST_ONLY)) }
+        assertThrows<IllegalStateException> { brokenLint().check(setOf(ApiContractRule.TYPED_REQUEST_BODY)) }
     }
 
     @Test
@@ -239,16 +239,14 @@ class ApiContractLintTest {
     }
 
     /**
-     * The verb rule reads every endpoint; the naming rules read only the client surface. An
-     * off-surface resource returning a nested, badly named type is caught by the first and by
-     * neither of the others.
+     * Every rule reads the client surface and nothing else. `OffSurfaceResource.dropCache` returns
+     * a nested type under a name no rule would accept, and is reported by none of them, because no
+     * client is emitted for it — the constraint the rules exist to protect never reaches it.
      */
     @Test
-    fun `scopes each rule to the surface it answers to`() {
+    fun `scopes every rule to the client surface`() {
         val violations = brokenLint().violations()
 
-        violations.filter { it.rule == ApiContractRule.GET_OR_POST_ONLY }.map { it.subject } shouldContainExactly
-            listOf("DELETE /api/ops/cache")
         violations.none { it.subject == "OffSurfaceResource.dropCache" } shouldBe true
     }
 

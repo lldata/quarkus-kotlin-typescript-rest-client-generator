@@ -3,10 +3,15 @@ package dk.lldata.tsclientgen.fixture
 import dk.lldata.tsclientgen.TypeScriptApi
 import jakarta.ws.rs.BeanParam
 import jakarta.ws.rs.CookieParam
+import jakarta.ws.rs.DELETE
 import jakarta.ws.rs.DefaultValue
 import jakarta.ws.rs.GET
+import jakarta.ws.rs.HEAD
 import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.OPTIONS
+import jakarta.ws.rs.PATCH
 import jakarta.ws.rs.POST
+import jakarta.ws.rs.PUT
 import jakarta.ws.rs.Path
 import jakarta.ws.rs.PathParam
 import jakarta.ws.rs.QueryParam
@@ -85,6 +90,49 @@ class BooksResource {
         @PathParam("isbn") isbn: String,
         @CookieParam("session") session: String?,
         @Context uriInfo: UriInfo,
+    ): RestResponse<Void> = TODO()
+}
+
+/**
+ * Every verb JAX-RS ships an annotation for, on one node, which is where they have to coexist.
+ *
+ * The list is the library's whole answer on verbs: what the platform can declare, the generator
+ * emits. Two are worth naming. `delete` is a reserved word, so it can only ever be a property —
+ * which is why the emitter builds these arrows anonymously; a named function spec would be refused
+ * by the writer before the file was written. `options` collides with the request-options parameter
+ * every leaf takes, so the property and the parameter share a spelling and must stay distinct.
+ *
+ * `HEAD` answers with headers and no body by definition, so the only honest return type for it is
+ * a bodyless one. Nothing yet enforces that — see the issue linked from the PR.
+ */
+@TypeScriptApi
+@Path("/api/documents/{id}")
+class DocumentsResource {
+    @PUT
+    fun replace(
+        @PathParam("id") id: String,
+        body: AddBookRequest,
+    ): BookDetailResponse = TODO()
+
+    @PATCH
+    fun amend(
+        @PathParam("id") id: String,
+        body: AddBookRequest,
+    ): BookDetailResponse = TODO()
+
+    @DELETE
+    fun remove(
+        @PathParam("id") id: String,
+    ): RestResponse<Void> = TODO()
+
+    @HEAD
+    fun exists(
+        @PathParam("id") id: String,
+    ): RestResponse<Void> = TODO()
+
+    @OPTIONS
+    fun allowed(
+        @PathParam("id") id: String,
     ): RestResponse<Void> = TODO()
 }
 
