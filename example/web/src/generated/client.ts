@@ -209,4 +209,4 @@ export function createApi(baseConfig: ApiConfig = {}) {
   };
 }
 
-export const api: ReturnType<typeof createApi> = createApi();
+export const api = createApi();
