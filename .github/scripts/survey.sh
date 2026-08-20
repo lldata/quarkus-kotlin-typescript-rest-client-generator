@@ -22,11 +22,32 @@ set -euo pipefail
 stuck_prs=$(gh pr list --state open --json number,mergeStateStatus \
   --jq '[.[] | select(.mergeStateStatus == "BLOCKED" or .mergeStateStatus == "DIRTY") | .number] | join(", ")')
 
-# An open issue nobody has answered. `claude` is the login the agent comments as. Oldest first:
-# a burst of issues filed together is worked in the order it was filed, which is what someone
-# filing them expects and what the concurrency group only appeared to provide.
-silent_issues=$(gh issue list --state open --json number,comments \
-  --jq '[.[] | select([.comments[].author.login] | index("claude") | not) | .number] | sort | join(", ")')
+# An open issue nobody has answered, and that answering is the right response to. `claude` is the
+# login the agent comments as. Oldest first: a burst of issues filed together is worked in the
+# order it was filed, which is what someone filing them expects and what the concurrency group
+# only appeared to provide.
+#
+# Two exclusions, and both exist because without them the sweep never runs out of work. An issue
+# it cannot finish stays uncommented, so it looks unanswered on the next sweep, and the next, for
+# as long as it is open — the repository generates pull requests about it forever with nobody
+# watching. That is the failure mode this whole sweep is supposed to prevent, so it must not be
+# the thing causing it.
+#
+#   `needs-decision` is parked by definition: the options are set out and a human has to choose.
+#   Another attempt cannot produce the missing answer, and AGENTS.md says so under **When the
+#   answer could go either way**. The label is what makes it findable in the meantime.
+#
+#   An issue filed by a bot is a report, not a work order. The standing "Release readiness"
+#   issue is the case that matters: the agent files it as `app/claude`, its own workflow
+#   rewrites it, and nothing is owed a pull request for it. Matched on `is_bot` rather than on
+#   the login, because the app's login is `app/claude` and a literal would be one rename from
+#   silently matching nothing.
+silent_issues=$(gh issue list --state open --json number,comments,labels,author \
+  --jq '[.[]
+         | select([.comments[].author.login] | index("claude") | not)
+         | select([.labels[].name] | index("needs-decision") | not)
+         | select(.author.is_bot != true)
+         | .number] | sort | join(", ")')
 
 # An issue already being worked has no comment on it yet either, so it looks exactly like one
 # nobody has picked up. Taking it would mean two runs on one issue: two branches, two pull
