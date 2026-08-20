@@ -27,13 +27,13 @@ dependencies {
     // Read from the consumer's classes, never loaded by this library on its own: whichever versions
     // the consuming project compiles against are the ones the annotations are read from.
     compileOnly("jakarta.ws.rs:jakarta.ws.rs-api:4.0.0")
-    compileOnly("com.fasterxml.jackson.core:jackson-annotations:2.17.0")
+    compileOnly("com.fasterxml.jackson.core:jackson-annotations:2.22")
 
     testImplementation("jakarta.ws.rs:jakarta.ws.rs-api:4.0.0")
-    testImplementation("com.fasterxml.jackson.core:jackson-annotations:2.17.0")
+    testImplementation("com.fasterxml.jackson.core:jackson-annotations:2.22")
     // Only so a fixture can carry `@JsonNaming`, which lives in databind. The library itself reads
     // it by qualified name and depends on none of this.
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.17.0")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22")
     // Only so the fixtures can declare `RestResponse<T>` and prove the wrapper is unwrapped by the
     // real class rather than by a stand-in with the same name.
     testImplementation("io.quarkus.resteasy.reactive:resteasy-reactive-common:3.38.2")
