@@ -1,9 +1,11 @@
-# The generator is pinned against a `dk.lldata:typescriptpoet` alpha, and half the build gate is
-# `tsc` in the example — so both the writer that decides emitted layout and the compiler that
-# judges it move underneath this project between releases. Dependabot makes that a series of small
-# reviewable pull requests rather than something discovered when a bump finally breaks.
+# This library follows the latest: a bump that passes the gate merges, and the commit is buildable
+# through JitPack immediately, so nothing is released for one. AGENTS.md explains why that is safe
+# — the example runs the generator against the platform's own classpath, which is a consumer's
+# situation — and names the few bumps that still wait for a human.
 #
-# Which of these the agent may merge, and which are a human's, is in AGENTS.md under Merging.
+# Weekly rather than monthly, because a policy of following the latest is not served by a batch of
+# four-week-old bumps arriving together. Duplicates between the directories below sort themselves
+# out under that policy: Dependabot closes a pull request whose bump another one already landed.
 version: 2
 
 updates:
@@ -11,7 +13,7 @@ updates:
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
-      interval: monthly
+      interval: weekly
     groups:
       actions:
         patterns: ["*"]
@@ -25,12 +27,12 @@ updates:
       - "/annotations"
       - "/example/backend"
     schedule:
-      interval: monthly
+      interval: weekly
     # `dk.lldata:typescriptpoet` is deliberately in no group, so it arrives alone and its
     # emitted diff can be read: it is the writer that decides how the client is laid out, and a
     # bump can change the output. AGENTS.md never lets an emitted change merge unread.
     groups:
-      # Kotlin and Dokka move together; one pull request a month rather than several.
+      # Kotlin and Dokka move together; one pull request rather than several.
       kotlin:
         patterns:
           - "org.jetbrains.kotlin*"
@@ -50,4 +52,4 @@ updates:
   - package-ecosystem: npm
     directory: "/example/web"
     schedule:
-      interval: monthly
+      interval: weekly

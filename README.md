@@ -114,6 +114,13 @@ Either way the generator brings `kotlin-reflect` with it. Exclude it and every e
 the generator checks and says so, rather than reporting the symptom, which reads like a wrong
 directory.
 
+**What it is tested against.** The example is a real Quarkus application that runs the generator
+against the platform's own classpath, and it tracks the current Quarkus release — so that is the
+version this library is tested with, and the floor moves with the platform rather than lagging it.
+An older Quarkus will usually work, because the generator compiles against `jakarta.ws.rs` 3.1.0
+and `jackson-annotations` 2.17.0 and reads whatever annotations your classes actually carry. But
+"usually" is the honest word: nothing here checks it.
+
 **1. Annotate the resources you want a client for.** Opt-in, so a new resource is outside the client
 until someone says so — the review point for "is this part of the contract the browser calls", which
 the path alone cannot answer.

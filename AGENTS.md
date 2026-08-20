@@ -267,41 +267,50 @@ pull request here is one logical change, and `main` reads better as one commit p
 
 ### Dependency bumps from Dependabot
 
-Dependabot opens pull requests that nobody currently reviews or merges: `dependabot[bot]` is not a
-trusted author, and the review workflow's `allowed_bots` list does not name it, so those pull
-requests get neither an inline review nor a path to merge and simply pile up.
+This library follows the latest. A bump that passes the gate merges on its own, and nothing is
+released for it: the commit is buildable through JitPack the moment it lands, so a consumer who
+needs a bump has it without a version being spent on one.
 
-Reviewing them is a one-line change to `.github/workflows/agent-review.yml` — add
-`dependabot[bot]` to the existing `allowed_bots: "claude"` input, comma-separated. That line lives
-in `.github/workflows/`, which makes it the release path in the sense this file already means, so
-it is described here for a human to apply rather than made by the agent.
+What makes that safe is the example, and the reason is worth stating rather than assuming. The
+generator's `jakarta.ws.rs` and Jackson dependencies are `compileOnly`, so they are absent from the
+published POM — what they pin is not something a consumer resolves, but the minimum API the
+generator assumes is on the classpath when it runs. The example is a real Quarkus application that
+runs the generator in its test source set, against the version the platform BOM resolves rather
+than the version the generator was compiled against. That is exactly a consumer's situation, so a
+bump that broke it fails the drift test here instead of reaching anyone.
 
-Merging one is narrower than "the author is the agent itself or a trusted author" was written for,
-since neither describes a bot. Treat a Dependabot pull request as the agent's to merge only when,
-in addition to the ordinary conditions above, all of the following hold:
+The consequence belongs in the open rather than in a footnote: **the Quarkus version the example
+builds against is the oldest this library is tested with**, and following the latest moves that
+floor with the platform. That is the right trade for something aiming at the Quarkus extension
+menu, where an extension tracks the platform rather than lagging it. The README says so, so nobody
+has to infer it.
 
-- **It is the `gradle` ecosystem's `kotlin` or `test` group, or an ungrouped `gradle` bump that
-  only touches a `testImplementation`/`testRuntimeOnly` dependency.** Never the `github-actions`
-  group: those pull requests touch `.github/workflows/`, already covered by "anything that changes
-  the rules or the release path" above. Never `dk.lldata:typescriptpoet`, which is ungrouped
-  precisely so it arrives alone — it decides how the client is laid out, so its bumps are emitted
-  changes by default and are read, not merged. The `quarkus` and `npm` entries are the example's,
-  and the example is the integration test: a bump there is the agent's only if the committed client
-  is untouched and both halves of the gate are green. A bump that does not obviously fit one of
-  these is not the agent's either; leave it rather than guessing.
-- **The diff leaves the compatibility floors alone.** Each published module pins `jvmTarget`,
-  `apiVersion`, `languageVersion` and `-Xjdk-release=17` as literal values, independent of the
-  plugin version Dependabot bumps, so an ordinary Kotlin or Dokka bump does not move them — check
-  the diff for those lines rather than assuming it. A bump that does move one is a floor change and
-  is never the agent's to merge, whatever the build says.
-- **The emitted output is unchanged.** There is no ABI check here, so the drift test is what would
-  notice a toolchain bump that changed what the generator writes. A green drift test is the
-  evidence; a red one means the bump is an emitted change and belongs to a human.
+Most of the exceptions are enforced by branch protection rather than by this file, which is the
+better place for them. `main` requires code-owner review, and `CODEOWNERS` covers the workflows,
+the release path and this file — so a `github-actions` bump, or one touching the publishing
+configuration in the root build, waits for a human whatever the checks say. Nothing needs to be
+remembered for those. What is left to hold to:
 
-A qualifying bump does not need a `CHANGELOG.md` entry — nothing about it is visible to someone
-consuming the library, and the changelog is for them. A bump that changes observable behaviour is
-judged on what it actually does, the same as any other change, not on which group opened the pull
-request.
+- **`dk.lldata:typescriptpoet` is never merged unread.** It decides how the client is laid out, so
+  a bump of it is an emitted change by default, and it is ungrouped precisely so it arrives alone.
+  Today it is pinned to a JitPack commit that Dependabot cannot see at all; the rule is for when it
+  returns to Central.
+- **A red gate parks the pull request, and that is the design, not a problem to route around.** A
+  bump that changes emitted output fails the drift test. Regenerating the committed client to make
+  it green is a change to the public contract, and is read rather than automated.
+- **A floor literal that moves is never automatic.** Each published module pins `jvmTarget`,
+  `apiVersion`, `languageVersion` and `-Xjdk-release=17` as literals, independent of the plugin
+  version being bumped, so an ordinary bump does not touch them. One that does is a floor change
+  and belongs to a human.
+
+Prefer `gh pr merge --auto --squash` to merging by hand, the same as for the agent's own pull
+requests: `build` is the required check, and it covers both halves of the gate. Doing this without
+the agent present is a workflow, and therefore a human's to add — `.github/workflows/` is described
+in **What the agent can change about itself** above.
+
+A bump does not need a `CHANGELOG.md` entry — nothing about it is visible to someone consuming the
+library, and the changelog is for them. A bump that changes observable behaviour is judged on what
+it actually does, the same as any other change, not on which group opened the pull request.
 
 
 ## Changelog
@@ -367,8 +376,17 @@ The version policy:
   hand, the only thing release readiness ever proposes is the next alpha in sequence.
 - **1.0.0 itself is never proposed by the agent.** Deciding the alphas are over is a judgment
   about the library being ready for people to depend on, and that is not the agent's call.
-- **After 1.0.0 ships**, a merged PR earns a patch bump. A minor or major happens only when a
-  trusted author opens an issue asking for one — never inferred from the size of what has landed.
+- **After 1.0.0 ships**, a Central release is occasional rather than per merge. JitPack already
+  serves whoever needs a change now, so a Central version is for consumers who want a coordinate
+  that holds still — cut when enough has accumulated to be worth their upgrading for. A Quarkus
+  major is the natural occasion, because that is when a consumer's own floors move anyway. A minor
+  or major version number happens only when a trusted author opens an issue asking for one, never
+  inferred from the size of what has landed.
+- **Nothing can go to Central while it depends on a JitPack coordinate.** `:generator` currently
+  requires `com.github.lldata:typescriptpoet:<commit>`, which Central will not accept as a
+  dependency, so the first release of any kind is blocked until that returns to
+  `dk.lldata:typescriptpoet` on Central. Say so when reporting readiness; it outranks every other
+  gap.
 
 When reporting release readiness, compare `git log <latest tag>..main` against the `Unreleased`
 section, and name anything that landed without a changelog entry — that gap is the most common
