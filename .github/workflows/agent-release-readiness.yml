@@ -27,7 +27,7 @@ jobs:
     steps:
 
     # The full history, so `git describe` and `git log <tag>..main` see the tags.
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
 
