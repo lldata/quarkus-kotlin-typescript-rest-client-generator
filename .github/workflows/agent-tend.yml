@@ -78,9 +78,12 @@ jobs:
 
     steps:
 
+    # `--ref` rather than letting gh work it out: resolving the default branch is a
+    # `repository.defaultBranchRef` read, which this token does not have and should not be given
+    # for one lookup. The ref is already known — this job only runs on a push to `main`.
     - env:
         GH_TOKEN: ${{ github.token }}
-      run: gh workflow run agent-tend.yml --repo "$GITHUB_REPOSITORY"
+      run: gh workflow run agent-tend.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
 
   survey:
     # The push-triggered run exists only to dispatch; the dispatched run does the work.
