@@ -9,7 +9,7 @@ from `./gradlew publishToMavenLocal` — see the README.
 
 ## [Unreleased]
 
-## [1.0.0-alpha5] — 2026-08-20
+## [1.0.0-alpha6] — 2026-08-20
 
 ### Added
 
@@ -100,6 +100,14 @@ from `./gradlew publishToMavenLocal` — see the README.
   test in this repository can do for them.
 
 ### Fixed
+
+- **`kotlin-reflect` is published with a version.** `api(kotlin("reflect"))` emits a dependency
+  with no `<version>` in the POM and puts the number in a `dependencyManagement` block instead.
+  The Central Portal validates that every dependency carries a version and does not resolve the
+  managed one, so the bundle was rejected — this is what failed the `1.0.0-alpha5` deployment,
+  which was tagged but never published. The version now comes from the applied Kotlin plugin
+  rather than a literal, so it cannot drift from what `settings.gradle.kts` pins and Dependabot
+  bumps.
 
 - **`HEAD` and `OPTIONS` calls did not type-check.** `#27` made the generator emit every JAX-RS
   verb, but the shipped `client-runtime.ts` still typed `ApiRequest.method` as
