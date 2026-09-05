@@ -28,12 +28,9 @@ val canSign =
 /** What is published, and what each one is for. The example is not published. */
 val published =
     mapOf(
-        "annotations" to
-            ("quarkus-kotlin-typescript-rest-client-annotations" to
-                "Two annotations marking which Quarkus/JAX-RS Kotlin resources belong in a generated TypeScript client."),
         "generator" to
             ("quarkus-kotlin-typescript-rest-client-generator" to
-                "Generates a TypeScript client from annotated Quarkus/JAX-RS Kotlin resources, by reading the compiled classes."),
+                "Generates a TypeScript client from Quarkus/JAX-RS Kotlin resources, by reading the compiled classes."),
     )
 
 published.forEach { (module, coordinates) ->

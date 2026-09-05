@@ -81,26 +81,44 @@ data class GeneratorOptions(
      */
     val onWarning: (String) -> Unit = { System.err.println("tsclientgen: $it") },
     /**
-     * Resources to put on the client surface by name rather than by annotation — fully qualified
-     * class names.
+     * Resources to put on the client surface by name — fully qualified class names.
      *
-     * The union with [scanForAnnotation] decides the surface: a resource on it because it carries
-     * `@TypeScriptApi`, or because it is named here, or both — never neither. A name here that
-     * does not resolve on the classpath, or that resolves to a class with no `@Path`, is refused
-     * rather than silently shrinking the client.
-     *
-     * For a resource whose source you do not own — so there is nothing to put `@TypeScriptApi`
-     * on — or for keeping `:annotations` off the runtime classpath entirely, name it here instead.
+     * For a resource whose source you do not own, so there is nothing to annotate. A name that does
+     * not resolve on the classpath, or that resolves to a class with no `@Path`, is refused rather
+     * than silently shrinking the client.
      */
     val clientResources: List<String> = emptyList(),
     /**
-     * Put every `@TypeScriptApi`-carrying resource on the client surface. On by default, which is
-     * today's only behaviour.
+     * Annotations that put a resource on the client surface.
      *
-     * Off, with [clientResources] doing all the naming, is the annotation-free setup: nothing on
-     * the runtime classpath ever needs to depend on `:annotations`.
+     * The generator ships none: name whichever your project already marks resources with, or write
+     * a three-line annotation of your own. `AnnotationMatch("jakarta.ws.rs.Path")` says every
+     * resource is client surface, which is a reasonable thing to want and a deliberate thing to
+     * write — pair it with [excludeAnnotations] or [excludePackages] for the ones that are not.
      */
-    val scanForAnnotation: Boolean = true,
+    val includeAnnotations: List<AnnotationMatch> = emptyList(),
+    /**
+     * Annotations that keep something off the client surface, whatever included it.
+     *
+     * On a class this drops the whole resource. On a method it drops that one endpoint and leaves
+     * its siblings alone — which is how `@Operation(hidden = true)` works, since MicroProfile
+     * targets it at methods.
+     *
+     * Exclusion beats [clientResources]: a resource named there and excluded here stays off. The
+     * list exists to guarantee something never reaches a published client, and a guarantee with
+     * exceptions is not one.
+     */
+    val excludeAnnotations: List<AnnotationMatch> = emptyList(),
+    /**
+     * Package prefixes whose resources are client surface, matched as [String.startsWith].
+     */
+    val includePackages: List<String> = emptyList(),
+    /**
+     * Package prefixes whose resources are never client surface, matched as [String.startsWith].
+     *
+     * Beats everything, for the same reason [excludeAnnotations] does.
+     */
+    val excludePackages: List<String> = emptyList(),
 ) {
     init {
         require(dtoPackages.isNotEmpty()) {
@@ -108,9 +126,12 @@ data class GeneratorOptions(
         }
         require(rootPath.startsWith("/")) { "rootPath must start with '/', was '$rootPath'." }
         require(runtimeImport.isNotBlank()) { "runtimeImport is what the emitted import statement says; it cannot be blank." }
-        require(scanForAnnotation || clientResources.isNotEmpty()) {
-            "scanForAnnotation is false and clientResources is empty, so no resource could ever be on the client " +
-                "surface. Turn scanForAnnotation on, or name at least one resource in clientResources."
+        // Refused rather than warned: this configuration cannot put a resource on the surface
+        // whatever the classpath holds, which is answerable without reading a single class. A
+        // configuration that *could* and happened not to is an outcome, and warns instead.
+        require(includeAnnotations.isNotEmpty() || includePackages.isNotEmpty() || clientResources.isNotEmpty()) {
+            "includeAnnotations, includePackages and clientResources are all empty, so no resource could ever be " +
+                "on the client surface. Name an annotation, a package, or a resource."
         }
     }
 

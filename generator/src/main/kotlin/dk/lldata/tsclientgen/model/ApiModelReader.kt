@@ -1,7 +1,6 @@
 package dk.lldata.tsclientgen.model
 
 import dk.lldata.tsclientgen.GeneratorOptions
-import dk.lldata.tsclientgen.TypeScriptApi
 import jakarta.ws.rs.BeanParam
 import jakarta.ws.rs.CookieParam
 import jakarta.ws.rs.DefaultValue
@@ -139,11 +138,28 @@ class ApiModelReader(
         return classes
     }
 
+    /**
+     * Whether [resource] is client surface at all: included by an annotation, a package prefix, or
+     * by name, and not excluded by either list.
+     *
+     * Exclusion is checked last and beats everything, including a name in
+     * [GeneratorOptions.clientResources]. The exclude lists exist to guarantee something never
+     * reaches a published client, and a guarantee with exceptions is not one — a stale entry in
+     * `clientResources` must not be able to publish a resource somebody marked internal.
+     */
+    private fun isClientSurface(resource: Class<*>): Boolean {
+        val packageName = resource.packageName
+        if (options.excludePackages.any { packageName.startsWith(it) }) return false
+        if (options.excludeAnnotations.any { it.matches(resource) }) return false
+
+        return options.includeAnnotations.any { it.matches(resource) } ||
+            options.includePackages.any { packageName.startsWith(it) } ||
+            resource.name in options.clientResources
+    }
+
     private fun endpointsOf(resource: Class<*>): List<Endpoint> {
         val basePath = resource.getAnnotation(Path::class.java).value
-        val inTypeScriptApi =
-            (options.scanForAnnotation && resource.isAnnotationPresent(TypeScriptApi::class.java)) ||
-                resource.name in options.clientResources
+        val inTypeScriptApi = isClientSurface(resource)
         return resource.declaredMethods.mapNotNull { method ->
             val verb = verbOf(method) ?: return@mapNotNull null
             val kotlinFunction = runCatching { method.kotlinFunction }.getOrNull() ?: return@mapNotNull null
@@ -157,7 +173,10 @@ class ApiModelReader(
                 params = paramsOf(kotlinFunction),
                 responseType = unwrapped?.second ?: declared,
                 unwrappedFrom = unwrapped?.first,
-                inTypeScriptApi = inTypeScriptApi,
+                // Checked per method as well as per class, because an exclusion annotation may
+                // target methods — `@Operation(hidden = true)` does — and then it means this one
+                // endpoint rather than the resource it hangs off.
+                inTypeScriptApi = inTypeScriptApi && options.excludeAnnotations.none { it.matches(method) },
             )
         }
     }

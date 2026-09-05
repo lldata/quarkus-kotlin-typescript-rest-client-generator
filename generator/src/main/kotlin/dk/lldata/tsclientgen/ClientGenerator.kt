@@ -64,11 +64,16 @@ class ClientGenerator(
     /** The client as it should be on disk. */
     fun render(): String {
         val covered = model.clientSurface
-        check(covered.isNotEmpty()) {
-            "none of the ${model.endpoints.size} endpoints read is on the client surface, so the client would be " +
-                "empty. Both routes onto it are opt-in: mark a resource with @TypeScriptApi " +
-                "(GeneratorOptions.scanForAnnotation is ${options.scanForAnnotation}), or name it in " +
-                "GeneratorOptions.clientResources (currently ${options.clientResources.size} name(s))."
+        // A warning, not a refusal. `GeneratorOptions` already refuses a configuration that could
+        // never select anything; reaching here means it could have and this classpath did not —
+        // mid-migration, or a module with no client-facing resources yet. Failing someone's build
+        // over that would be this tool having an opinion about their project.
+        if (covered.isEmpty()) {
+            options.onWarning(
+                "none of the ${model.endpoints.size} endpoints read is on the client surface, so the client has no " +
+                    "calls in it. Check includeAnnotations, includePackages and clientResources against what the " +
+                    "exclude lists remove.",
+            )
         }
         return formatter.format(TypeScriptClientEmitter(options).emit(covered))
     }

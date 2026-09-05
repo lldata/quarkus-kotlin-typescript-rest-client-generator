@@ -50,8 +50,11 @@ genuinely HTTP — a `@BeanParam` holder and the `toSearch()` seam that ends it,
 query parameter whose Kotlin name is not its wire name, a node that is both an endpoint and a
 namespace, a `return` segment, a bodyless `RestResponse<Void>` where the status is the whole answer,
 and ambient parameters (a cookie, an injected `UriInfo`) that never reach the client.
-[OpsResource.kt](backend/src/main/kotlin/dk/lldata/tsclientgen/example/OpsResource.kt) carries no
-`@TypeScriptApi` and is therefore absent from the client — that is the opt-in working.
+[OpsResource.kt](backend/src/main/kotlin/dk/lldata/tsclientgen/example/api/OpsResource.kt) carries the
+example's own `@NotOnTheClient` and is therefore absent from the client, and `BooksResource.reindex`
+carries MicroProfile's `@Operation(hidden = true)` and is absent for the same reason one endpoint at
+a time. This example includes every `@Path` resource and names what is not public, rather than
+marking what is — the exclusions are what make that safe.
 
 **4. What came out** — [client.ts](web/src/generated/client.ts) and
 [client-temporal.ts](web/src/generated/client-temporal.ts). Read it next to the Kotlin: every

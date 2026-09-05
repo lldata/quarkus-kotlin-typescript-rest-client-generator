@@ -11,7 +11,6 @@ repositories {
 }
 
 dependencies {
-    api(project(":annotations"))
 
     // The TypeScript writer. A fork of outfoxx/typescriptpoet, which stopped at 1.1.2 in 2021 —
     // this adds the Kotlin DSL, the object-literal getter a lazy call tree is made of, and a writer
