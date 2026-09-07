@@ -9,6 +9,57 @@ from `./gradlew publishToMavenLocal` — see the README.
 
 ## [Unreleased]
 
+### Removed
+
+- **Breaking. `@TypeScriptApi` and the whole `:annotations` artifact are gone.** The generator no
+  longer ships an annotation, and nothing of it lands on a consumer's runtime classpath. Which
+  resources are client surface is now configuration:
+
+  ```kotlin
+  includeAnnotations = listOf(AnnotationMatch("com.acme.PublicApi")),
+  excludeAnnotations = listOf(AnnotationMatch("com.acme.Internal")),
+  includePackages = listOf("com.acme.api"),
+  excludePackages = listOf("com.acme.api.ops"),
+  clientResources = listOf("com.acme.vendor.SomeResource"),
+  ```
+
+  A project names whatever it already marks resources with, or writes three lines of its own. The
+  generator interoperates with any of it and depends on none — `AnnotationMatch` carries a fully
+  qualified name, never a class reference, precisely so the annotation can be one the generator has
+  never heard of.
+
+  An `AnnotationMatch` may pin one member to a value, which is what makes third-party markers
+  usable: `AnnotationMatch("org.eclipse.microprofile.openapi.annotations.Operation", "hidden", true)`
+  matches `@Operation(hidden = true)`, so a single annotation keeps an endpoint out of the OpenAPI
+  document *and* out of the client. Because MicroProfile targets that annotation at methods,
+  exclusion works per endpoint as well as per class: on a class it drops the resource, on a method
+  it drops that one endpoint and leaves its siblings emitted.
+
+  **Exclusion beats everything, including `clientResources`.** The exclude lists exist to guarantee
+  something never reaches a published client, and a guarantee with exceptions is not one — a stale
+  entry naming a resource must not be able to publish one somebody marked internal.
+
+  `scanForAnnotation` is removed with it: an empty `includeAnnotations` says the same thing. It
+  shipped hours earlier in the same unreleased section, so nothing depended on it.
+
+  **Migration.** Write an annotation and name it, or name resources and packages:
+
+  ```kotlin
+  @Target(AnnotationTarget.CLASS)
+  @Retention(AnnotationRetention.RUNTIME)
+  annotation class PublicApi
+  ```
+
+  Then drop the `dk.lldata:quarkus-kotlin-typescript-rest-client-annotations` dependency. One
+  artifact is published now, not two.
+
+- **A configuration that can never select anything still refuses; one that selected nothing this
+  time warns.** The two are different questions. No includes and no named resources is broken
+  configuration, answerable without reading a class, and fails early. A configuration that *could*
+  have selected something and did not is an outcome — mid-migration, or a module with no
+  client-facing resources yet — and reports through `onWarning` rather than failing a build over
+  someone else's project shape.
+
 ## [1.0.0-alpha6] — 2026-08-20
 
 ### Added
@@ -238,55 +289,6 @@ from `./gradlew publishToMavenLocal` — see the README.
   ([#43](https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/issues/43))
 
 ### Removed
-
-- **Breaking. `@TypeScriptApi` and the whole `:annotations` artifact are gone.** The generator no
-  longer ships an annotation, and nothing of it lands on a consumer's runtime classpath. Which
-  resources are client surface is now configuration:
-
-  ```kotlin
-  includeAnnotations = listOf(AnnotationMatch("com.acme.PublicApi")),
-  excludeAnnotations = listOf(AnnotationMatch("com.acme.Internal")),
-  includePackages = listOf("com.acme.api"),
-  excludePackages = listOf("com.acme.api.ops"),
-  clientResources = listOf("com.acme.vendor.SomeResource"),
-  ```
-
-  A project names whatever it already marks resources with, or writes three lines of its own. The
-  generator interoperates with any of it and depends on none — `AnnotationMatch` carries a fully
-  qualified name, never a class reference, precisely so the annotation can be one the generator has
-  never heard of.
-
-  An `AnnotationMatch` may pin one member to a value, which is what makes third-party markers
-  usable: `AnnotationMatch("org.eclipse.microprofile.openapi.annotations.Operation", "hidden", true)`
-  matches `@Operation(hidden = true)`, so a single annotation keeps an endpoint out of the OpenAPI
-  document *and* out of the client. Because MicroProfile targets that annotation at methods,
-  exclusion works per endpoint as well as per class: on a class it drops the resource, on a method
-  it drops that one endpoint and leaves its siblings emitted.
-
-  **Exclusion beats everything, including `clientResources`.** The exclude lists exist to guarantee
-  something never reaches a published client, and a guarantee with exceptions is not one — a stale
-  entry naming a resource must not be able to publish one somebody marked internal.
-
-  `scanForAnnotation` is removed with it: an empty `includeAnnotations` says the same thing. It
-  shipped hours earlier in the same unreleased section, so nothing depended on it.
-
-  **Migration.** Write an annotation and name it, or name resources and packages:
-
-  ```kotlin
-  @Target(AnnotationTarget.CLASS)
-  @Retention(AnnotationRetention.RUNTIME)
-  annotation class PublicApi
-  ```
-
-  Then drop the `dk.lldata:quarkus-kotlin-typescript-rest-client-annotations` dependency. One
-  artifact is published now, not two.
-
-- **A configuration that can never select anything still refuses; one that selected nothing this
-  time warns.** The two are different questions. No includes and no named resources is broken
-  configuration, answerable without reading a class, and fails early. A configuration that *could*
-  have selected something and did not is an outcome — mid-migration, or a module with no
-  client-facing resources yet — and reports through `onWarning` rather than failing a build over
-  someone else's project shape.
 
 - **Breaking. `RESPONSE_NAMING` and `@TypeScriptValueObject` are both gone.** The rule required
   every emitted payload type to end in `Response` or carry the annotation; the annotation existed
