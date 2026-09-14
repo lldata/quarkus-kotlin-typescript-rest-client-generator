@@ -9,6 +9,16 @@ from `./gradlew publishToMavenLocal` — see the README.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The two contract-lint messages for an undescribable payload (`jakarta.ws.rs.core.Response`,
+  `jakarta.ws.rs.core.StreamingOutput`) still told a consumer to leave the resource off
+  `@TypeScriptApi`.** That annotation was removed earlier in this same unreleased window, so the
+  advice pointed at a symbol that no longer exists on any classpath. Both messages now point at
+  `GeneratorOptions.excludeAnnotations`/`excludePackages`, or at leaving the resource out of
+  `clientResources`/`includeAnnotations`, which is how exclusion actually works now.
+  ([#60](https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator/issues/60))
+
 ### Removed
 
 - **Breaking. `@TypeScriptApi` and the whole `:annotations` artifact are gone.** The generator no

@@ -45,9 +45,12 @@ class TypeScriptTypes(
                     "Declare the payload as the return type and let the framework set the status, or return a typed " +
                     "envelope the generator can unwrap — `RestResponse<T>` and `Uni<T>` are unwrapped out of the box, " +
                     "and GeneratorOptions.wrapperTypes takes more. If the endpoint genuinely has no typed body, return " +
-                    "`Unit` for a bodyless one, or leave its resource off @TypeScriptApi.",
+                    "`Unit` for a bodyless one, or keep its resource out of the client via GeneratorOptions." +
+                    "excludeAnnotations, excludePackages, or by leaving it off clientResources/includeAnnotations.",
                 "jakarta.ws.rs.core.StreamingOutput" to
-                    "A stream has no JSON shape. Leave this endpoint's resource off @TypeScriptApi and call it directly.",
+                    "A stream has no JSON shape. Keep this endpoint's resource out of the client via GeneratorOptions." +
+                    "excludeAnnotations, excludePackages, or by leaving it off clientResources/includeAnnotations, " +
+                    "and call it directly.",
             )
 
         /** Declares a type, and that type says nothing. `JsonNode` is excluded on purpose. */
