@@ -44,7 +44,7 @@ dependencies {
     testImplementation("com.fasterxml.jackson.core:jackson-databind")
     // Only so the fixtures can declare `RestResponse<T>` and prove the wrapper is unwrapped by the
     // real class rather than by a stand-in with the same name.
-    testImplementation("io.quarkus.resteasy.reactive:resteasy-reactive-common:3.39.2")
+    testImplementation("io.quarkus.resteasy.reactive:resteasy-reactive-common:3.39.3")
     testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
     testImplementation("io.kotest:kotest-assertions-core-jvm:6.2.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
