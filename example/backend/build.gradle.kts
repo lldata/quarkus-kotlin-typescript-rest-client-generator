@@ -29,7 +29,7 @@ dependencies {
 
     testImplementation("io.quarkus:quarkus-junit5")
     testImplementation("io.rest-assured:rest-assured")
-    testImplementation("io.kotest:kotest-assertions-core-jvm:6.2.4")
+    testImplementation("io.kotest:kotest-assertions-core-jvm:6.2.5")
 }
 
 // Quarkus needs its beans open; Kotlin classes are final by default.
