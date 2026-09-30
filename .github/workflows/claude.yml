@@ -33,7 +33,7 @@ jobs:
 
     # 21 is the toolchain the build asks for. The jars target 17, but that is a floor the
     # compiler enforces, not the JDK the build runs on.
-    - uses: actions/setup-java@v5
+    - uses: actions/setup-java@v6
       with:
         distribution: 'temurin'
         java-version: '21'

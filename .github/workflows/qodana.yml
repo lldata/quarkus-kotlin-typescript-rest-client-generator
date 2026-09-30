@@ -39,13 +39,13 @@ jobs:
         fetch-depth: 0
 
     # The toolchain the build asks for; the bootstrap below runs Gradle.
-    - uses: actions/setup-java@v5
+    - uses: actions/setup-java@v6
       with:
         distribution: 'temurin'
         java-version: '21'
 
     - name: Qodana Scan
-      uses: JetBrains/qodana-action@v2026.2.0
+      uses: JetBrains/qodana-action@v2026.2.1
       with:
         # No baseline: it would report zero while hiding the findings. No token either — the scan
         # and its SARIF work without one; a token only adds cloud reporting.
