@@ -33,11 +33,11 @@ dependencies {
     // literals resolves to a coordinate that does not exist — 2.22 of databind, or 2.22.2 of
     // annotations, both 404. The platform is the only version this project can state and the only
     // one a bump has to move.
-    compileOnly(platform("com.fasterxml.jackson:jackson-bom:2.22.3"))
+    compileOnly(platform("com.fasterxml.jackson:jackson-bom:2.22.4"))
     compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
     testImplementation("jakarta.ws.rs:jakarta.ws.rs-api:4.0.0")
-    testImplementation(platform("com.fasterxml.jackson:jackson-bom:2.22.3"))
+    testImplementation(platform("com.fasterxml.jackson:jackson-bom:2.22.4"))
     testImplementation("com.fasterxml.jackson.core:jackson-annotations")
     // Only so a fixture can carry `@JsonNaming`, which lives in databind. The library itself reads
     // it by qualified name and depends on none of this.
