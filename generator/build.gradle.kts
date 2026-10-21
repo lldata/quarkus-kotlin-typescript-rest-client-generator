@@ -46,7 +46,7 @@ dependencies {
     // real class rather than by a stand-in with the same name.
     testImplementation("io.quarkus.resteasy.reactive:resteasy-reactive-common:3.40.1")
     testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
-    testImplementation("io.kotest:kotest-assertions-core-jvm:6.2.5")
+    testImplementation("io.kotest:kotest-assertions-core-jvm:6.2.6")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
