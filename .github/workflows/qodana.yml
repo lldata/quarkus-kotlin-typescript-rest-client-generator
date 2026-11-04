@@ -45,7 +45,7 @@ jobs:
         java-version: '21'
 
     - name: Qodana Scan
-      uses: JetBrains/qodana-action@v2026.2.1
+      uses: JetBrains/qodana-action@v2026.2.2
       with:
         # No baseline: it would report zero while hiding the findings. No token either — the scan
         # and its SARIF work without one; a token only adds cloud reporting.
