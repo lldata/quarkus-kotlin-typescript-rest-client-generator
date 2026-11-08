@@ -8,17 +8,26 @@
 #
 # What is protected is anything that constrains or observes the agent:
 #
-#   - the workflows, which GitHub already refuses to let a GitHub App touch
 #   - the scripts, which include the checks that make a silent or failed run visible
 #   - AGENTS.md, which is the authorisation rules themselves
 #   - the skills, which are the procedures it follows
 #   - the release path: the publishing configuration in the root build, and the single
 #     `version=` line that decides what the two artifacts are called
 #
+# The workflows are deliberately *not* on this list, although they constrain the agent most of all.
+# They do not need it: GitHub refuses a commit from a GitHub App that touches `.github/workflows/`
+# without the `workflows` permission, which this installation does not have, so the agent cannot
+# change them whatever this file says. What owning them here did buy was a human click on every
+# Dependabot bump of an action — pure version pins, nothing a review was ever going to catch that
+# the build does not. That click cost more than it protected, so the path is unowned below and
+# such a bump merges on a green build like any other. A human's own workflow change is merged by
+# that human anyway.
+#
 # Its craft is not protected. The generator, the annotations, the example and the changelog are
 # ordinary work, and a green build is a better judge of those than a human skim.
 
 /.github/                @lldata
+/.github/workflows/
 /.claude/                @lldata
 /AGENTS.md               @lldata
 /CLAUDE.md               @lldata

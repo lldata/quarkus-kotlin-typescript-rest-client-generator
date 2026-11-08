@@ -15,12 +15,37 @@
 set -euo pipefail
 
 : "${GITHUB_OUTPUT:?must be run from a workflow step}"
+: "${GITHUB_REPOSITORY:?}"
 
 # A pull request that is open and not merely waiting for its checks. CLEAN and UNSTABLE are both
-# fine — those are green, or still running. BLOCKED means something is holding it: an unresolved
-# review thread, or a required check that failed. DIRTY means it conflicts.
-stuck_prs=$(gh pr list --state open --json number,mergeStateStatus \
-  --jq '[.[] | select(.mergeStateStatus == "BLOCKED" or .mergeStateStatus == "DIRTY") | .number] | join(", ")')
+# fine — those are green, or still running. DIRTY means it conflicts, which is always work.
+#
+# BLOCKED is only work when the agent can do something about it: a check that failed, or
+# a review thread nobody has answered. A pull request whose checks are green or still running is
+# BLOCKED too, and that is not stuck. A green pull request with no open thread that is BLOCKED is
+# waiting for a human's approval, and the human already has the review request GitHub sent them.
+# Counting it as stuck used to wake the sweep every three hours to comment "nothing for the agent
+# to do" on it — a mail to the maintainer each time, saying nothing they did not already know. A
+# sweep that cannot move something forward should leave it alone, quietly.
+stuck_prs=$(gh api graphql --paginate -f owner="${GITHUB_REPOSITORY%/*}" -f name="${GITHUB_REPOSITORY#*/}" -f query='
+  query($owner: String!, $name: String!, $endCursor: String) {
+    repository(owner: $owner, name: $name) {
+      pullRequests(states: OPEN, first: 50, after: $endCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          number
+          mergeStateStatus
+          commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
+          reviewThreads(first: 100) { nodes { isResolved } }
+        }
+      }
+    }
+  }' --jq '.data.repository.pullRequests.nodes[]
+    | select(.mergeStateStatus == "DIRTY"
+        or (.mergeStateStatus == "BLOCKED"
+            and ((.commits.nodes[0].commit.statusCheckRollup.state // "") as $s | $s == "FAILURE" or $s == "ERROR"
+                 or ([.reviewThreads.nodes[] | select(.isResolved | not)] | length) > 0)))
+    | .number' | sort -n | paste -sd, - | sed 's/,/, /g')
 
 # An open issue nobody has answered, and that answering is the right response to. `claude` is the
 # login the agent comments as. Oldest first: a burst of issues filed together is worked in the
