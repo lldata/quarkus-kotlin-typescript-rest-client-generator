@@ -140,4 +140,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME"
           --draft
           --title "${{ steps.version.outputs.version }}"
-          generator/build/libs/*.jar annotations/build/libs/*.jar
+          generator/build/libs/*.jar

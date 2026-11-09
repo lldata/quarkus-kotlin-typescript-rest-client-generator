@@ -13,7 +13,6 @@ exclude:
     paths:
       - build
       - .gradle
-      - annotations/build
       - generator/build
       - example/backend/build
       - example/web/node_modules
