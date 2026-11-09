@@ -24,7 +24,6 @@ updates:
     directories:
       - "/"
       - "/generator"
-      - "/annotations"
       - "/example/backend"
     schedule:
       interval: weekly

@@ -15,7 +15,7 @@ jdk:
 
 # JitPack's default is `./gradlew install`, which this build does not define.
 #
-# The two published modules are named rather than left to the whole build: `publishToMavenLocal`
+# The published module is named rather than left to the whole build: `publishToMavenLocal`
 # across every project would also configure `:example:backend`, which is the integration test and
 # has nothing a consumer resolves.
 #
@@ -24,4 +24,4 @@ jdk:
 # then serves. Signing needs no handling: it turns itself on only when a key is present, and the key
 # never leaves the publish workflow.
 install:
-  - ./gradlew :annotations:publishToMavenLocal :generator:publishToMavenLocal -Pversion=$VERSION
+  - ./gradlew :generator:publishToMavenLocal -Pversion=$VERSION

@@ -519,14 +519,14 @@ See [example/README.md](example/README.md) for what to look at and in which orde
 ## Building this repo
 
 ```bash
-./gradlew build                # library, annotations, example, drift test and lint
-./gradlew publishToMavenLocal  # installs both artifacts into ~/.m2 for other projects
+./gradlew build                # library, example, drift test and lint
+./gradlew publishToMavenLocal  # installs the artifact into ~/.m2 for other projects
 ```
 
-`:generator` is the library, `:annotations` is the two annotations, `:example:backend` is the
-consumer. `./gradlew ktlintFormat` before committing.
+`:generator` is the library, `:example:backend` is the consumer. `./gradlew ktlintFormat` before
+committing.
 
-The version is set once, in `gradle.properties`, so the two published artifacts cannot drift apart.
+The version is set once, in `gradle.properties`.
 
 ### Publishing
 
