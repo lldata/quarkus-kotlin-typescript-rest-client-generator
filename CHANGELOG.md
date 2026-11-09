@@ -3,11 +3,13 @@
 All notable changes to this project are documented here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-The versions below are tags, not published releases: nothing has reached Maven Central yet. Until
-it does, the artifacts come from JitPack, which builds any commit of this repository on demand, or
-from `./gradlew publishToMavenLocal` — see the README.
+Releases are on Maven Central from 1.0.0-alpha6 on; the earlier versions below are tags only. Any
+unreleased commit can be built through JitPack, or with `./gradlew publishToMavenLocal` — see the
+README.
 
 ## [Unreleased]
+
+## [1.0.0] — 2026-11-09
 
 ### Fixed
 

@@ -79,7 +79,8 @@ The module-level `api` is for the browser, where the cookie is the credential.
 
 ## Using it
 
-**0. Get the artifacts.** Not on Maven Central yet, so there are two ways in.
+**0. Get the artifact.** Releases are on Maven Central, under the coordinate shown below. For an
+unreleased commit there are two ways in.
 
 *From anywhere a build runs* — a CI runner, a colleague's machine — through
 [JitPack][jitpack], which builds a commit of this repository on demand. Nothing is published for
@@ -94,14 +95,13 @@ repositories {
 dependencies {
     val client = "com.github.lldata.quarkus-kotlin-typescript-rest-client-generator"
 
-    implementation("$client:quarkus-kotlin-typescript-rest-client-annotations:main-SNAPSHOT")
     testImplementation("$client:quarkus-kotlin-typescript-rest-client-generator:main-SNAPSHOT")
 }
 ```
 
 Two things about that coordinate. The group is the repository's rather than `dk.lldata`, because
 JitPack builds from git — and it carries the repository name because this is a multi-module build,
-where the artifact id stays what the module publishes. Both lines change to `dk.lldata` at a
+where the artifact id stays what the module publishes. The line changes to `dk.lldata` at a
 release.
 
 And `main-SNAPSHOT` is the convenient version, not the good one. It moves, so a bug report against
@@ -162,18 +162,15 @@ prefix and exclude is checked last.
 
 ```kotlin
 repositories {
-    mavenLocal()     // the developer-machine route above; JitPack is the other
-    mavenCentral()   // where the generator's own dependencies are
+    mavenCentral()
 }
 
 dependencies {
-    implementation("dk.lldata:quarkus-kotlin-typescript-rest-client-annotations:1.0.0-alpha4")
-    testImplementation("dk.lldata:quarkus-kotlin-typescript-rest-client-generator:1.0.0-alpha4")
+    testImplementation("dk.lldata:quarkus-kotlin-typescript-rest-client-generator:1.0.0")
 }
 ```
 
-The annotations are a separate artifact with no dependencies, because they go on your resources and
-therefore onto your runtime classpath. The generator is a build-time tool and never ships.
+The generator is a build-time tool and never ships: nothing of it lands on your runtime classpath.
 
 **2. Configure it once, in your test source set** — where the writer and the drift gate can be the
 same code, and where nothing in the deployed application can reach it. Copy these three files; they
