@@ -47,6 +47,11 @@ filed, which is the order the person filing them expects.
 the worst response available. Reproduce it, say plainly what is happening, and label it. Leave
 the decision to a human, and say that is what you are doing.
 
+**Not yours to move: a green pull request waiting only for a human's approval.** The human
+already has GitHub's review request. Leave it alone and do not comment on it — a comment saying
+nobody but them can act is a mail telling them what the request already told them. If it is the
+only thing open, this is the "Nothing" case below.
+
 **Nothing.** Say so in one line and stop. Do not manufacture work, do not tidy, do not refactor
 something that was not asked for. A quiet repository is a good outcome and an expensive run that
 invents a reason to exist is not.
@@ -72,7 +77,9 @@ that was not yours to merge.
 ## 4. Say what you did — always, without exception
 
 Leave the trace where the next reader will look: a comment on the pull request or issue you
-touched, not only in the run log. If you decided to do nothing, one line saying so is enough.
+touched, not only in the run log. If you decided to do nothing, one line in the run log is enough
+— not a comment on something you did not touch. A comment mails a human, and it should only do
+that when there is something in it for them.
 
 This is not the polite finishing touch, it is the whole point. A run that ends green and silent
 is indistinguishable from a run that never happened, and from an agent that has quietly stopped

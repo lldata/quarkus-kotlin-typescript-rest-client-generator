@@ -337,9 +337,11 @@ menu, where an extension tracks the platform rather than lagging it. The README 
 has to infer it.
 
 Most of the exceptions are enforced by branch protection rather than by this file, which is the
-better place for them. `main` requires code-owner review, and `CODEOWNERS` covers the workflows,
-the release path and this file — so a `github-actions` bump, or one touching the publishing
-configuration in the root build, waits for a human whatever the checks say. Nothing needs to be
+better place for them. `main` requires code-owner review, and `CODEOWNERS` covers the release path
+and this file — so a bump touching the publishing configuration in the root build waits for a human
+whatever the checks say. A `github-actions` bump does not: `.github/workflows/` is deliberately
+unowned, because the agent cannot write there anyway and a human approving a version pin was a
+click that protected nothing. It merges on a green build like any other bump. Nothing needs to be
 remembered for those. What is left to hold to:
 
 - **`dk.lldata:typescriptpoet` is never merged unread.** It decides how the client is laid out, so
