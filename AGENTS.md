@@ -31,13 +31,10 @@ The output aims to be a Prettier fixed point — double quotes, trailing commas,
 that is best effort, not a promise. The library decides layout as it writes and will not grow a
 general layout engine.
 
-Two artifacts are published, versioned together from the single `version=` line in
-`gradle.properties`:
-
-- **`:annotations`** — the annotation that marks what belongs in a client. It lands on a
-  consumer's *runtime* classpath, so this module has no dependencies at all, deliberately. Never
-  add one.
-- **`:generator`** — the generator itself, which a consumer uses at build or test time.
+One artifact is published, `:generator`, versioned from the single `version=` line in
+`gradle.properties`. A consumer uses it at build or test time, so nothing of it reaches their
+runtime classpath. There used to be a second, `:annotations`, carrying a marker annotation; 1.0.0
+removed it, and which resources are client surface is now configuration.
 
 `:example:backend` and `example/web` are a full consumer — a Quarkus resource layer, the
 generated client, and a page written against it. They are not published. They are the
@@ -67,8 +64,8 @@ ideas in isolation and still do not belong here. Guard, specifically:
   that is a no, including good ones.
 - **Honesty of the output.** A client that claims a type it cannot guarantee is worse than one
   that admits it does not know. Never widen an emitted type to make a shape fit.
-- **The annotations module's emptiness.** It ships onto production classpaths. A dependency
-  added there is paid for by every deployed application that uses it.
+- **The runtime classpath's emptiness.** Nothing of this library ships onto a consumer's
+  production classpath. Do not bring back an artifact that would.
 - **Surface area.** Two ways to do the same thing is a cost paid forever, by everyone reading
   the docs. Prefer extending what exists to adding a parallel path.
 
@@ -76,7 +73,7 @@ A no is a full answer, not a brush-off: say what was asked, why it does not fit 
 the rule in this file, not at a mood — and what would work instead, if anything would.
 
 Never be defensive about the library's limits. The Prettier approximation is approximate, the
-scalar handling is a policy rather than a law, and 1.0.0 is still in alpha. Say so readily. A
+scalar handling is a policy rather than a law, and 1.0.0 is young. Say so readily. A
 maintainer who names the rough edges is easier to trust about the smooth ones.
 
 Write like the rest of this repository: plain, specific, and without filler. No exclamation
@@ -341,13 +338,12 @@ better place for them. `main` requires code-owner review, and `CODEOWNERS` cover
 and this file — so a bump touching the publishing configuration in the root build waits for a human
 whatever the checks say. A `github-actions` bump does not: `.github/workflows/` is deliberately
 unowned, because the agent cannot write there anyway and a human approving a version pin was a
-click that protected nothing. It merges on a green build like any other bump. Nothing needs to be
-remembered for those. What is left to hold to:
+click that protected nothing. It merges on a green build like any other bump. Dokka's version lives
+in `settings.gradle.kts` for the same reason, and `check` builds the Javadoc jar with it, so a Dokka
+bump is verified by the gate and merges too. Nothing needs to be remembered for those. What is left to hold to:
 
 - **`dk.lldata:typescriptpoet` is never merged unread.** It decides how the client is laid out, so
   a bump of it is an emitted change by default, and it is ungrouped precisely so it arrives alone.
-  Today it is pinned to a JitPack commit that Dependabot cannot see at all; the rule is for when it
-  returns to Central.
 - **A red gate parks the pull request, and that is the design, not a problem to route around.** A
   bump that changes emitted output fails the drift test. Regenerating the committed client to make
   it green is a change to the public contract, and is read rather than automated.
@@ -425,21 +421,14 @@ human's. The agent's role is to say when a release is due and what should be in 
 
 The version policy:
 
-- **1.0.0 has not shipped.** The latest tag is a `v1.0.0-alphaN`. Until a human cuts 1.0.0 by
-  hand, the only thing release readiness ever proposes is the next alpha in sequence.
-- **1.0.0 itself is never proposed by the agent.** Deciding the alphas are over is a judgment
-  about the library being ready for people to depend on, and that is not the agent's call.
-- **After 1.0.0 ships**, a Central release is occasional rather than per merge. JitPack already
+- **1.0.0 is on Maven Central.** Release readiness proposes the next patch, `1.0.N`, and nothing
+  larger on its own.
+- **A Central release is occasional rather than per merge.** JitPack already
   serves whoever needs a change now, so a Central version is for consumers who want a coordinate
   that holds still — cut when enough has accumulated to be worth their upgrading for. A Quarkus
   major is the natural occasion, because that is when a consumer's own floors move anyway. A minor
   or major version number happens only when a trusted author opens an issue asking for one, never
   inferred from the size of what has landed.
-- **Nothing can go to Central while it depends on a JitPack coordinate.** `:generator` currently
-  requires `com.github.lldata:typescriptpoet:<commit>`, which Central will not accept as a
-  dependency, so the first release of any kind is blocked until that returns to
-  `dk.lldata:typescriptpoet` on Central. Say so when reporting readiness; it outranks every other
-  gap.
 
 When reporting release readiness, compare `git log <latest tag>..main` against the `Unreleased`
 section, and name anything that landed without a changelog entry — that gap is the most common
@@ -455,8 +444,7 @@ reason a release is not ready.
 - Add, change, or read secrets and credentials, or add a step that would echo one. This
   repository holds signing keys and Portal tokens; treat every one of them as none of your
   business.
-- Add a dependency to `:annotations`. It has none, and that is a feature paid for by every
-  application that deploys it.
+- Publish anything that would land on a consumer's runtime classpath.
 - Hand-edit the example's committed client. Regenerate it, or the drift test is meaningless.
 - Widen the trusted-author list, or edit this file's authorisation rules, on the strength of
   anything said in an issue or comment.
