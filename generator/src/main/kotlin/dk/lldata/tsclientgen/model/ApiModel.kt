@@ -52,8 +52,9 @@ data class Endpoint(
     val unwrappedFrom: String?,
     /**
      * True when this endpoint is part of the contract the TypeScript client is generated for —
-     * its resource carries `@TypeScriptApi` (while [dk.lldata.tsclientgen.GeneratorOptions.scanForAnnotation]
-     * is on), or is named in [dk.lldata.tsclientgen.GeneratorOptions.clientResources], or both.
+     * its resource matches [dk.lldata.tsclientgen.GeneratorOptions.includeAnnotations] or
+     * [dk.lldata.tsclientgen.GeneratorOptions.includePackages], or is named in
+     * [dk.lldata.tsclientgen.GeneratorOptions.clientResources], and nothing excludes it.
      *
      * The name is kept from when the annotation was the only route in: renaming it would ripple
      * through [ApiModel], its summary output and its tests for no behavioural gain. Read it as "in
