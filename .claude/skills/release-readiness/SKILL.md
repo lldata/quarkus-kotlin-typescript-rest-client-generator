@@ -6,8 +6,8 @@ description: Assess whether a release is due, reporting to the run summary and o
 # Release readiness
 
 Read `AGENTS.md` for the version policy before you form an opinion. The short version: a human
-tags, you advise. 1.0.0 has not shipped, so until it does nothing here proposes anything but the
-next alpha — and nothing at all while the JitPack dependency below stands. Unreleased work is not
+tags, you advise. 1.0.0 has shipped, so what you propose is the next patch, `1.0.N` — never a
+minor or major on your own. Unreleased work is not
 stranded meanwhile: any commit is consumable through JitPack, which is often the better answer to
 "when is this released?" anyway.
 
@@ -21,14 +21,7 @@ stranded meanwhile: any commit is consumable through JitPack, which is often the
 
 ## Judge
 
-Answer four questions, in this order:
-
-**Can anything be released at all?** `:generator` depends on
-`com.github.lldata:typescriptpoet:<commit>`, a JitPack coordinate, and Central will not accept one
-as a dependency. While that line stands, no release of any kind can be published and the answer is
-hold whatever else has landed — say so first rather than burying it under a changelog audit. Check
-it in `generator/build.gradle.kts` rather than assuming it is still true; it goes back to
-`dk.lldata:typescriptpoet` when that fork's 2.0.0 lands.
+Answer three questions, in this order:
 
 **Is the changelog honest?** Every user-visible commit since the tag should have an entry. List
 any that do not, by commit. This is the most common reason a release is not ready, and it is the
@@ -38,10 +31,10 @@ one thing here that is a fact rather than a judgment.
 rule with no test, a README section describing behaviour that no longer matches the emitted
 output, a `TODO` left in a shipped path. Name it.
 
-**What would the release be?** Per the version policy: while 1.0.0 is in alpha, what has landed
-earns the next alpha in sequence. 1.0.0 itself is a human's decision and never yours to propose.
-If what has landed feels larger than an alpha bump, say that in as many words and leave the
-decision alone.
+**What would the release be?** Per the version policy: the next patch in sequence. A minor or
+major happens only when a trusted author asks for one in an issue. If what has landed feels larger
+than a patch — a breaking change especially — say that in as many words and leave the decision
+alone.
 
 ## Report
 
@@ -77,12 +70,12 @@ The body holds: the latest tag and commit count since, what has landed, what is 
 exact steps a human would take. Releasing here is two steps, not one — the publish workflow
 refuses a tag that does not match the committed version, so the bump lands on `main` first. Use
 the actual next tag in sequence rather than copying the example; check
-`git tag --list 'v1.0.0-alpha*' | sort -V | tail -1` for what comes after it:
+`git tag --list 'v[0-9]*' | sort -V | tail -1` for what comes after it:
 
 ```bash
 # 1. bump `version=` in gradle.properties on main, and commit it
 # 2. then tag that commit
-git tag v1.0.0-alphaN && git push origin v1.0.0-alphaN
+git tag v1.0.N && git push origin v1.0.N
 ```
 
 Say plainly what the tag does and does not do: it uploads a signed bundle to the Central Portal

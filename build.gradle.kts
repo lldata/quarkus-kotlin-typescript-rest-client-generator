@@ -7,7 +7,8 @@ plugins {
     // `KotlinJvm` publication and has to be able to see the Kotlin plugin to do it.
     kotlin("jvm") apply false
     id("com.vanniktech.maven.publish") version "0.37.0" apply false
-    id("org.jetbrains.dokka") version "2.2.0" apply false
+    // Versioned in settings.gradle.kts; see there for why.
+    id("org.jetbrains.dokka") apply false
 }
 
 val repository = "https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator"
@@ -38,6 +39,11 @@ published.forEach { (module, coordinates) ->
     project(":$module") {
         apply(plugin = "com.vanniktech.maven.publish")
         apply(plugin = "org.jetbrains.dokka")
+
+        // The Javadoc jar Central requires is Dokka's output, and nothing else builds it before a
+        // tag is pushed. Under `check` a Dokka bump that breaks it fails the pull request instead
+        // of the release.
+        tasks.matching { it.name == "check" }.configureEach { dependsOn("dokkaGeneratePublicationHtml") }
 
         // The module's own script applies Kotlin, and this root script is configured before it is,
         // so the publication cannot be described until the plugin is actually there — `KotlinJvm`

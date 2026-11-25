@@ -10,6 +10,10 @@ pluginManagement {
         id("io.quarkus") version quarkusPluginVersion
         id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
         kotlin("plugin.allopen") version "2.4.21"
+        // Here rather than in the root build, which CODEOWNERS holds for its publishing
+        // configuration: a Dokka bump is a docs-tool bump, and `check` builds the Javadoc jar
+        // with it, so the gate verifies it like any other.
+        id("org.jetbrains.dokka") version "2.3.0"
     }
 }
 
@@ -19,9 +23,6 @@ plugins {
 }
 
 rootProject.name = "quarkus-kotlin-typescript-rest-client-generator"
-
-// Two annotations with no dependencies. They go on your resources, so they go on your runtime
-// classpath — separate from the generator, which does not.
 
 include("generator")
 
