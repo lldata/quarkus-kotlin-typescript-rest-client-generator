@@ -7,7 +7,7 @@ plugins {
     // `KotlinJvm` publication and has to be able to see the Kotlin plugin to do it.
     kotlin("jvm") apply false
     id("com.vanniktech.maven.publish") version "0.37.0" apply false
-    id("org.jetbrains.dokka") version "2.2.0" apply false
+    id("org.jetbrains.dokka") version "2.3.0" apply false
 }
 
 val repository = "https://github.com/lldata/quarkus-kotlin-typescript-rest-client-generator"
